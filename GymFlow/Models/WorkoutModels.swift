@@ -82,7 +82,7 @@ struct Exercise: Identifiable, Codable, Equatable {
         targetReps: String,
         suggestedWeight: String,
         hint: String,
-        alternatives: [ExerciseSwapOption]
+        alternatives: [ExerciseSwapOption] = []
     ) {
         self.id = id
         self.name = name
@@ -104,6 +104,25 @@ struct Exercise: Identifiable, Codable, Equatable {
 
         return repValues.first ?? 10
     }
+}
+
+struct DailyWorkoutOverride: Identifiable, Codable, Equatable {
+    let id: UUID
+    var date: Date
+    var workoutDay: WorkoutDay
+
+    init(id: UUID = UUID(), date: Date, workoutDay: WorkoutDay) {
+        self.id = id
+        self.date = date
+        self.workoutDay = workoutDay
+    }
+}
+
+struct ScheduledWorkoutDay: Identifiable, Equatable {
+    var id: Date { date }
+    var date: Date
+    var workoutDay: WorkoutDay
+    var isCustomized: Bool
 }
 
 struct WorkoutDay: Identifiable, Codable, Equatable {
@@ -180,6 +199,7 @@ struct LoggedSet: Identifiable, Codable, Equatable {
     var completedAt: Date
     var reps: Int
     var weight: String
+    var intervalSincePreviousSet: TimeInterval?
     var feedback: EffortFeedback?
 
     init(
@@ -189,6 +209,7 @@ struct LoggedSet: Identifiable, Codable, Equatable {
         completedAt: Date,
         reps: Int,
         weight: String,
+        intervalSincePreviousSet: TimeInterval? = nil,
         feedback: EffortFeedback?
     ) {
         self.id = id
@@ -197,6 +218,7 @@ struct LoggedSet: Identifiable, Codable, Equatable {
         self.completedAt = completedAt
         self.reps = reps
         self.weight = weight
+        self.intervalSincePreviousSet = intervalSincePreviousSet
         self.feedback = feedback
     }
 }
@@ -237,6 +259,10 @@ struct ActiveWorkout: Codable, Equatable {
 
     var totalSetCount: Int {
         exerciseStates.reduce(0) { $0 + $1.targetSets }
+    }
+
+    var lastLoggedSet: LoggedSet? {
+        loggedSets.max(by: { $0.completedAt < $1.completedAt })
     }
 }
 

@@ -27,7 +27,11 @@ struct TodayViewModel {
     }
 
     var todayPlan: WorkoutDay? {
-        store.todayPlan()
+        store.workoutDay(for: .now)
+    }
+
+    var isCustomizedToday: Bool {
+        store.isCustomizedWorkout(on: .now)
     }
 
     var progress: Double {
@@ -64,10 +68,19 @@ struct TodayViewModel {
             return "Today is lighter on purpose. Recovery still counts."
         }
 
-        return "\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min."
+        let prefix = isCustomizedToday ? "Customized for today. " : ""
+        return "\(prefix)\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min."
     }
 
     func state(for exercise: Exercise) -> ActiveWorkoutExerciseState? {
         activeWorkout?.exerciseStates.first(where: { $0.id == exercise.id })
+    }
+
+    func formattedInterval(_ interval: TimeInterval?) -> String {
+        guard let interval else { return "No sets logged yet" }
+        let totalSeconds = max(Int(interval.rounded()), 0)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return minutes > 0 ? "\(minutes)m \(seconds)s" : "\(seconds)s"
     }
 }

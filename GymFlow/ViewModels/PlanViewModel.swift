@@ -4,14 +4,14 @@ import Foundation
 struct PlanViewModel {
     let store: AppStore
     private let calendar = Calendar.current
+    private static let shortDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
 
-    var orderedDays: [WorkoutDay] {
-        guard let days = store.workoutPlan?.days else { return [] }
-
-        let mondayFirstOrder = [2, 3, 4, 5, 6, 7, 1]
-        return days.sorted {
-            (mondayFirstOrder.firstIndex(of: $0.weekday) ?? 0) < (mondayFirstOrder.firstIndex(of: $1.weekday) ?? 0)
-        }
+    var scheduledDays: [ScheduledWorkoutDay] {
+        store.weeklySchedule()
     }
 
     var summary: String {
@@ -26,13 +26,18 @@ struct PlanViewModel {
         store.userProfile?.location ?? .gym
     }
 
-    func isToday(_ day: WorkoutDay) -> Bool {
-        day.weekday == calendar.component(.weekday, from: .now)
+    func isToday(_ day: ScheduledWorkoutDay) -> Bool {
+        calendar.isDateInToday(day.date)
     }
 
-    func weekdayLabel(for day: WorkoutDay) -> String {
+    func weekdayLabel(for day: ScheduledWorkoutDay) -> String {
         let symbols = calendar.weekdaySymbols
-        let symbol = symbols.indices.contains(day.weekday - 1) ? symbols[day.weekday - 1] : "Day"
+        let weekday = calendar.component(.weekday, from: day.date)
+        let symbol = symbols.indices.contains(weekday - 1) ? symbols[weekday - 1] : "Day"
         return symbol
+    }
+
+    func dateLabel(for day: ScheduledWorkoutDay) -> String {
+        Self.shortDateFormatter.string(from: day.date)
     }
 }

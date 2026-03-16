@@ -15,6 +15,9 @@ final class AppStore: ObservableObject {
     @Published private(set) var completedSessions: [WorkoutSession] = [] {
         didSet { save(completedSessions, for: .completedSessions) }
     }
+    @Published private(set) var dailyOverrides: [DailyWorkoutOverride] = [] {
+        didSet { save(dailyOverrides, for: .dailyOverrides) }
+    }
     @Published private(set) var recoveryHistory: [RecoveryCheckIn] = [] {
         didSet { save(recoveryHistory, for: .recoveryHistory) }
     }
@@ -37,6 +40,7 @@ final class AppStore: ObservableObject {
         case workoutPlan = "gymflow.workoutPlan"
         case activeWorkout = "gymflow.activeWorkout"
         case completedSessions = "gymflow.completedSessions"
+        case dailyOverrides = "gymflow.dailyOverrides"
         case recoveryHistory = "gymflow.recoveryHistory"
     }
 
@@ -49,12 +53,14 @@ final class AppStore: ObservableObject {
             workoutPlan = sample.workoutPlan
             activeWorkout = sample.activeWorkout
             completedSessions = sample.completedSessions
+            dailyOverrides = sample.dailyOverrides
             recoveryHistory = sample.recoveryHistory
         } else {
             userProfile = load(UserProfile.self, for: .userProfile)
             workoutPlan = load(WorkoutPlan.self, for: .workoutPlan)
             activeWorkout = load(ActiveWorkout.self, for: .activeWorkout)
             completedSessions = load([WorkoutSession].self, for: .completedSessions) ?? []
+            dailyOverrides = load([DailyWorkoutOverride].self, for: .dailyOverrides) ?? []
             recoveryHistory = load([RecoveryCheckIn].self, for: .recoveryHistory) ?? []
             clearStaleActiveWorkoutIfNeeded()
         }
@@ -68,6 +74,7 @@ final class AppStore: ObservableObject {
         userProfile = profile
         workoutPlan = WorkoutPlanGenerator.makePlan(for: profile)
         activeWorkout = nil
+        dailyOverrides = []
         if completedSessions.isEmpty == false || recoveryHistory.isEmpty == false {
             completedSessions = []
             recoveryHistory = []
@@ -80,10 +87,38 @@ final class AppStore: ObservableObject {
         userProfile.location = location
         self.userProfile = userProfile
         workoutPlan = WorkoutPlanGenerator.makePlan(for: userProfile)
+        dailyOverrides = []
     }
 
     func todayPlan(referenceDate: Date = .now) -> WorkoutDay? {
-        workoutPlan?.day(for: referenceDate, calendar: calendar)
+        workoutDay(for: referenceDate)
+    }
+
+    func workoutDay(for date: Date) -> WorkoutDay? {
+        let normalizedDate = normalized(date)
+
+        if let override = dailyOverrides.first(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) }) {
+            return override.workoutDay
+        }
+
+        return baseWorkoutDay(for: normalizedDate)
+    }
+
+    func isCustomizedWorkout(on date: Date = .now) -> Bool {
+        let normalizedDate = normalized(date)
+        return dailyOverrides.contains(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) })
+    }
+
+    func weeklySchedule(referenceDate: Date = .now) -> [ScheduledWorkoutDay] {
+        weekDates(containing: referenceDate).compactMap { date in
+            guard let workoutDay = workoutDay(for: date) else { return nil }
+
+            return ScheduledWorkoutDay(
+                date: normalized(date),
+                workoutDay: workoutDay,
+                isCustomized: isCustomizedWorkout(on: date)
+            )
+        }
     }
 
     func activeWorkoutForToday(referenceDate: Date = .now) -> ActiveWorkout? {
@@ -98,12 +133,13 @@ final class AppStore: ObservableObject {
     func startWorkout(on date: Date = .now) {
         guard activeWorkoutForToday(referenceDate: date) == nil else { return }
         guard completedSession(on: date) == nil else { return }
-        guard let workoutDay = todayPlan(referenceDate: date), workoutDay.isRecovery == false else { return }
+        guard let workoutDay = workoutDay(for: date), workoutDay.isRecovery == false else { return }
+        guard workoutDay.exercises.isEmpty == false else { return }
 
         activeWorkout = ActiveWorkout(
             dayID: workoutDay.id,
             dayTitle: workoutDay.title,
-            date: calendar.startOfDay(for: date),
+            date: normalized(date),
             startedAt: date,
             estimatedMinutes: workoutDay.estimatedMinutes,
             exerciseStates: workoutDay.exercises.map {
@@ -132,6 +168,11 @@ final class AppStore: ObservableObject {
         activeWorkout.exerciseStates[index].adjustmentNote = "Set logged. Stay smooth on the next one."
 
         let exerciseState = activeWorkout.exerciseStates[index]
+        let intervalSincePreviousSet = activeWorkout.loggedSets
+            .map(\.completedAt)
+            .max()
+            .map { date.timeIntervalSince($0) }
+
         activeWorkout.loggedSets.append(
             LoggedSet(
                 exerciseID: exerciseState.id,
@@ -139,6 +180,7 @@ final class AppStore: ObservableObject {
                 completedAt: date,
                 reps: exerciseState.targetRepCount,
                 weight: exerciseState.currentWeight,
+                intervalSincePreviousSet: intervalSincePreviousSet,
                 feedback: exerciseState.lastFeedback
             )
         )
@@ -179,24 +221,84 @@ final class AppStore: ObservableObject {
         self.activeWorkout = nil
     }
 
-    func swapExercise(dayID: UUID, exerciseID: UUID, with option: ExerciseSwapOption) {
-        guard var workoutPlan else { return }
-        guard let dayIndex = workoutPlan.days.firstIndex(where: { $0.id == dayID }) else { return }
-        guard let exerciseIndex = workoutPlan.days[dayIndex].exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
+    func addExercise(
+        on date: Date,
+        name: String,
+        sets: Int,
+        reps: String,
+        weight: String,
+        hint: String
+    ) {
+        guard var workoutDay = editableWorkoutDay(for: date) else { return }
 
-        workoutPlan.days[dayIndex].exercises[exerciseIndex].name = option.name
-        workoutPlan.days[dayIndex].exercises[exerciseIndex].targetReps = option.targetReps
-        workoutPlan.days[dayIndex].exercises[exerciseIndex].suggestedWeight = option.suggestedWeight
-        workoutPlan.days[dayIndex].exercises[exerciseIndex].hint = option.hint
-        self.workoutPlan = workoutPlan
+        if workoutDay.isRecovery {
+            workoutDay.kind = .fullBody
+            workoutDay.title = "Custom Workout"
+            workoutDay.focusArea = "Flexible exercise mix for today"
+            workoutDay.estimatedMinutes = 35
+        }
 
-        if var activeWorkout, activeWorkout.dayID == dayID,
-           let activeIndex = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) {
-            activeWorkout.exerciseStates[activeIndex].exerciseName = option.name
-            activeWorkout.exerciseStates[activeIndex].targetReps = option.targetReps
-            activeWorkout.exerciseStates[activeIndex].currentWeight = option.suggestedWeight
-            activeWorkout.exerciseStates[activeIndex].hint = option.hint
-            self.activeWorkout = activeWorkout
+        workoutDay.exercises.append(
+            Exercise(
+                name: name,
+                targetSets: max(sets, 1),
+                targetReps: reps,
+                suggestedWeight: weight,
+                hint: hint,
+                alternatives: genericAlternatives(for: name, reps: reps, weight: weight)
+            )
+        )
+
+        saveCustomizedWorkoutDay(workoutDay, for: date)
+    }
+
+    func updateExercise(
+        on date: Date,
+        exerciseID: UUID,
+        name: String,
+        sets: Int,
+        reps: String,
+        weight: String,
+        hint: String
+    ) {
+        guard var workoutDay = editableWorkoutDay(for: date) else { return }
+        guard let exerciseIndex = workoutDay.exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
+
+        workoutDay.exercises[exerciseIndex].name = name
+        workoutDay.exercises[exerciseIndex].targetSets = max(sets, 1)
+        workoutDay.exercises[exerciseIndex].targetReps = reps
+        workoutDay.exercises[exerciseIndex].suggestedWeight = weight
+        workoutDay.exercises[exerciseIndex].hint = hint
+
+        if workoutDay.exercises[exerciseIndex].alternatives.isEmpty {
+            workoutDay.exercises[exerciseIndex].alternatives = genericAlternatives(for: name, reps: reps, weight: weight)
+        }
+
+        saveCustomizedWorkoutDay(workoutDay, for: date)
+    }
+
+    func removeExercise(on date: Date, exerciseID: UUID) {
+        guard var workoutDay = editableWorkoutDay(for: date) else { return }
+        workoutDay.exercises.removeAll { $0.id == exerciseID }
+        saveCustomizedWorkoutDay(workoutDay, for: date)
+    }
+
+    func swapExercise(on date: Date, exerciseID: UUID, with option: ExerciseSwapOption) {
+        guard var workoutDay = editableWorkoutDay(for: date) else { return }
+        guard let exerciseIndex = workoutDay.exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
+
+        workoutDay.exercises[exerciseIndex].name = option.name
+        workoutDay.exercises[exerciseIndex].targetReps = option.targetReps
+        workoutDay.exercises[exerciseIndex].suggestedWeight = option.suggestedWeight
+        workoutDay.exercises[exerciseIndex].hint = option.hint
+        saveCustomizedWorkoutDay(workoutDay, for: date)
+    }
+
+    func resetWorkoutCustomization(for date: Date) {
+        dailyOverrides.removeAll { calendar.isDate($0.date, inSameDayAs: date) }
+
+        if let baseWorkoutDay = baseWorkoutDay(for: date) {
+            synchronizeActiveWorkoutIfNeeded(for: date, with: baseWorkoutDay)
         }
     }
 
@@ -256,6 +358,141 @@ final class AppStore: ObservableObject {
         }
     }
 
+    private func baseWorkoutDay(for date: Date) -> WorkoutDay? {
+        workoutPlan?.day(for: date, calendar: calendar)
+    }
+
+    private func editableWorkoutDay(for date: Date) -> WorkoutDay? {
+        guard var workoutDay = workoutDay(for: date) else { return nil }
+        workoutDay.weekday = calendar.component(.weekday, from: date)
+        return workoutDay
+    }
+
+    private func saveCustomizedWorkoutDay(_ workoutDay: WorkoutDay, for date: Date) {
+        let normalizedDate = normalized(date)
+        let normalizedWorkoutDay = normalizedWorkoutDay(workoutDay, for: normalizedDate)
+
+        if let overrideIndex = dailyOverrides.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) }) {
+            dailyOverrides[overrideIndex].workoutDay = normalizedWorkoutDay
+        } else {
+            dailyOverrides.append(
+                DailyWorkoutOverride(
+                    date: normalizedDate,
+                    workoutDay: normalizedWorkoutDay
+                )
+            )
+        }
+
+        dailyOverrides.sort { $0.date < $1.date }
+        synchronizeActiveWorkoutIfNeeded(for: normalizedDate, with: normalizedWorkoutDay)
+    }
+
+    private func normalizedWorkoutDay(_ workoutDay: WorkoutDay, for date: Date) -> WorkoutDay {
+        var workoutDay = workoutDay
+        workoutDay.weekday = calendar.component(.weekday, from: date)
+
+        if workoutDay.exercises.isEmpty {
+            if baseWorkoutDay(for: date)?.isRecovery == true {
+                workoutDay.kind = .recovery
+                workoutDay.title = "Recovery"
+                workoutDay.focusArea = "Mobility, walking, light stretching"
+                workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 20)
+            } else {
+                workoutDay.title = workoutDay.title.isEmpty ? "Custom Workout" : workoutDay.title
+                workoutDay.focusArea = workoutDay.focusArea.isEmpty ? "Flexible exercise mix for today" : workoutDay.focusArea
+                workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 20)
+            }
+        } else {
+            if workoutDay.kind == .recovery {
+                workoutDay.kind = .fullBody
+            }
+
+            if workoutDay.title == "Recovery" {
+                workoutDay.title = "Custom Workout"
+            }
+
+            if workoutDay.focusArea == "Mobility, walking, light stretching" {
+                workoutDay.focusArea = "Flexible exercise mix for today"
+            }
+
+            workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 12 + (workoutDay.exercises.count * 7))
+        }
+
+        return workoutDay
+    }
+
+    private func synchronizeActiveWorkoutIfNeeded(for date: Date, with workoutDay: WorkoutDay) {
+        guard var activeWorkout else { return }
+        guard calendar.isDate(activeWorkout.date, inSameDayAs: date) else { return }
+
+        let existingStates = Dictionary(uniqueKeysWithValues: activeWorkout.exerciseStates.map { ($0.id, $0) })
+        let validIDs = Set(workoutDay.exercises.map(\.id))
+
+        activeWorkout.exerciseStates = workoutDay.exercises.map { exercise in
+            if var existingState = existingStates[exercise.id] {
+                existingState.exerciseName = exercise.name
+                existingState.targetSets = exercise.targetSets
+                existingState.targetReps = exercise.targetReps
+                existingState.hint = exercise.hint
+                existingState.currentWeight = exercise.suggestedWeight
+                return existingState
+            }
+
+            return ActiveWorkoutExerciseState(
+                id: exercise.id,
+                exerciseName: exercise.name,
+                targetSets: exercise.targetSets,
+                targetReps: exercise.targetReps,
+                hint: exercise.hint,
+                completedSets: 0,
+                currentWeight: exercise.suggestedWeight,
+                lastFeedback: nil,
+                adjustmentNote: nil
+            )
+        }
+
+        activeWorkout.dayTitle = workoutDay.title
+        activeWorkout.estimatedMinutes = workoutDay.estimatedMinutes
+        activeWorkout.loggedSets = activeWorkout.loggedSets
+            .filter { validIDs.contains($0.exerciseID) }
+            .map { loggedSet in
+                var loggedSet = loggedSet
+                loggedSet.exerciseName = workoutDay.exercises.first(where: { $0.id == loggedSet.exerciseID })?.name ?? loggedSet.exerciseName
+                return loggedSet
+            }
+
+        self.activeWorkout = activeWorkout
+    }
+
+    private func weekDates(containing referenceDate: Date) -> [Date] {
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: referenceDate) else {
+            return [normalized(referenceDate)]
+        }
+
+        let dates = (0..<7).compactMap {
+            calendar.date(byAdding: .day, value: $0, to: interval.start).map(normalized(_:))
+        }
+        let mondayFirstOrder = [2, 3, 4, 5, 6, 7, 1]
+
+        return dates.sorted {
+            let lhsWeekday = calendar.component(.weekday, from: $0)
+            let rhsWeekday = calendar.component(.weekday, from: $1)
+            return (mondayFirstOrder.firstIndex(of: lhsWeekday) ?? 0) < (mondayFirstOrder.firstIndex(of: rhsWeekday) ?? 0)
+        }
+    }
+
+    private func normalized(_ date: Date) -> Date {
+        calendar.startOfDay(for: date)
+    }
+
+    private func genericAlternatives(for name: String, reps: String, weight: String) -> [ExerciseSwapOption] {
+        [
+            ExerciseSwapOption(name: "\(name) variation", targetReps: reps, suggestedWeight: weight, hint: "Pick the version that fits the equipment you have today."),
+            ExerciseSwapOption(name: "Band option", targetReps: "12-15", suggestedWeight: "Light band", hint: "Useful when you want a lower setup cost."),
+            ExerciseSwapOption(name: "Bodyweight option", targetReps: "10-12", suggestedWeight: "Bodyweight", hint: "Keep the tempo controlled and repeatable.")
+        ]
+    }
+
     private func load<Value: Decodable>(_ type: Value.Type, for key: StorageKey) -> Value? {
         guard let data = defaults.data(forKey: key.rawValue) else { return nil }
         return try? decoder.decode(type, from: data)
@@ -280,6 +517,7 @@ extension AppStore {
         workoutPlan: WorkoutPlan,
         activeWorkout: ActiveWorkout?,
         completedSessions: [WorkoutSession],
+        dailyOverrides: [DailyWorkoutOverride],
         recoveryHistory: [RecoveryCheckIn]
     ) {
         let profile = UserProfile(
@@ -290,14 +528,30 @@ extension AppStore {
         )
         let plan = WorkoutPlanGenerator.makePlan(for: profile)
         let today = plan.day(for: .now) ?? plan.days.first!
+        var customizedToday = today
+        customizedToday.title = "Custom Push"
+        if customizedToday.exercises.isEmpty == false {
+            customizedToday.exercises[0].suggestedWeight = "55 lb"
+            customizedToday.exercises[0].targetSets = 4
+        }
+        customizedToday.exercises.append(
+            Exercise(
+                name: "Cable Lateral Raise",
+                targetSets: 2,
+                targetReps: "12-15",
+                suggestedWeight: "12 lb",
+                hint: "Keep the shoulder relaxed and raise smoothly.",
+                alternatives: []
+            )
+        )
 
         let activeWorkout = ActiveWorkout(
-            dayID: today.id,
-            dayTitle: today.title,
+            dayID: customizedToday.id,
+            dayTitle: customizedToday.title,
             date: Calendar.current.startOfDay(for: .now),
             startedAt: .now.addingTimeInterval(-900),
-            estimatedMinutes: today.estimatedMinutes,
-            exerciseStates: today.exercises.enumerated().map { index, exercise in
+            estimatedMinutes: customizedToday.estimatedMinutes,
+            exerciseStates: customizedToday.exercises.enumerated().map { index, exercise in
                 ActiveWorkoutExerciseState(
                     id: exercise.id,
                     exerciseName: exercise.name,
@@ -310,7 +564,26 @@ extension AppStore {
                     adjustmentNote: index == 0 ? "Try a slightly stronger next set if your form still feels clean." : nil
                 )
             },
-            loggedSets: []
+            loggedSets: [
+                LoggedSet(
+                    exerciseID: customizedToday.exercises[0].id,
+                    exerciseName: customizedToday.exercises[0].name,
+                    completedAt: .now.addingTimeInterval(-310),
+                    reps: customizedToday.exercises[0].targetRepCount,
+                    weight: "50 lb",
+                    intervalSincePreviousSet: nil,
+                    feedback: nil
+                ),
+                LoggedSet(
+                    exerciseID: customizedToday.exercises[0].id,
+                    exerciseName: customizedToday.exercises[0].name,
+                    completedAt: .now.addingTimeInterval(-135),
+                    reps: customizedToday.exercises[0].targetRepCount,
+                    weight: "55 lb",
+                    intervalSincePreviousSet: 175,
+                    feedback: .tooEasy
+                )
+            ]
         )
 
         let completedSession = WorkoutSession(
@@ -327,9 +600,15 @@ extension AppStore {
                     completedAt: Calendar.current.date(byAdding: .day, value: -2, to: .now) ?? .now,
                     reps: $0.targetRepCount,
                     weight: $0.suggestedWeight,
+                    intervalSincePreviousSet: 90,
                     feedback: nil
                 )
             }
+        )
+
+        let override = DailyWorkoutOverride(
+            date: Calendar.current.startOfDay(for: .now),
+            workoutDay: customizedToday
         )
 
         let recovery = RecoveryCheckIn(
@@ -345,6 +624,7 @@ extension AppStore {
             workoutPlan: plan,
             activeWorkout: activeWorkout,
             completedSessions: [completedSession],
+            dailyOverrides: [override],
             recoveryHistory: [recovery]
         )
     }
