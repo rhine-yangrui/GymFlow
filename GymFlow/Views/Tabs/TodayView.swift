@@ -5,6 +5,7 @@ struct TodayView: View {
     @State private var editingExercise: Exercise?
     @State private var isEditingSessionDetails = false
     @State private var isAddingExercise = false
+    @State private var sessionPendingDeletion: WorkoutSession?
 
     private var viewModel: TodayViewModel {
         TodayViewModel(store: store)
@@ -34,6 +35,29 @@ struct TodayView: View {
         .sheet(isPresented: $isAddingExercise) {
             ExerciseEditorSheet(date: .now, existingExercise: nil)
                 .environmentObject(store)
+        }
+        .confirmationDialog(
+            "Delete training record?",
+            isPresented: Binding(
+                get: { sessionPendingDeletion != nil },
+                set: { if $0 == false { sessionPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let sessionPendingDeletion else { return }
+                FeedbackEngine.impact()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    store.deleteCompletedSession(sessionPendingDeletion.id)
+                }
+                self.sessionPendingDeletion = nil
+            }
+
+            Button("Cancel", role: .cancel) {
+                sessionPendingDeletion = nil
+            }
+        } message: {
+            Text("This removes the saved session and any progress derived from it.")
         }
     }
 
@@ -220,6 +244,22 @@ struct TodayView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            sessionPendingDeletion = session
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.danger)
+                                .frame(width: 38, height: 38)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(AppTheme.danger.opacity(0.12))
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(20)
                     .background(

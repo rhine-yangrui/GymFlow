@@ -225,6 +225,10 @@ final class AppStore: ObservableObject {
             .sorted { $0.completedAt > $1.completedAt }
     }
 
+    func deleteCompletedSession(_ sessionID: UUID) {
+        completedSessions.removeAll { $0.id == sessionID }
+    }
+
     func startWorkout(on date: Date = .now) {
         guard activeWorkoutForToday(referenceDate: date) == nil else { return }
         guard let workoutDay = workoutDay(for: date) else { return }
@@ -318,7 +322,7 @@ final class AppStore: ObservableObject {
             if let nextIndex = nextUnfinishedExerciseIndex(in: activeWorkout.exerciseStates, after: index) {
                 activeWorkout.exerciseStates[nextIndex].phaseStartedAt = date
                 activeWorkout.exerciseStates[nextIndex].liveStatus = .breakTime
-                activeWorkout.exerciseStates[nextIndex].adjustmentNote = "Next exercise ready."
+                activeWorkout.exerciseStates[nextIndex].adjustmentNote = nil
             }
         } else {
             activeWorkout.exerciseStates[index].phaseStartedAt = date
