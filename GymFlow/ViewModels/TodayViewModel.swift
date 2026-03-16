@@ -72,7 +72,10 @@ struct TodayViewModel {
             return "The day is open. Recover, or build a session when you want.\(sessionSummary)"
         }
 
-        return "\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min.\(sessionSummary)"
+        let focusText = todayPlan.focusArea.isEmpty
+            ? "Build the session your own way"
+            : todayPlan.focusArea
+        return "\(focusText) in about \(todayPlan.estimatedMinutes) min.\(sessionSummary)"
     }
 
     func state(for exercise: Exercise) -> ActiveWorkoutExerciseState? {

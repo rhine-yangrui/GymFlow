@@ -221,12 +221,16 @@ final class AppStore: ObservableObject {
 
         let setDuration = activeWorkout.exerciseStates[index].phaseStartedAt.map { date.timeIntervalSince($0) }
         activeWorkout.exerciseStates[index].completedSets += 1
-        activeWorkout.exerciseStates[index].phaseStartedAt = nil
         activeWorkout.exerciseStates[index].lastSetDuration = setDuration
-        activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
-        activeWorkout.exerciseStates[index].adjustmentNote = activeWorkout.exerciseStates[index].liveStatus == .completed
-            ? "Exercise complete. Move on when you are ready."
-            : "Set finished. Start a break or move into the next set."
+        if activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets {
+            activeWorkout.exerciseStates[index].phaseStartedAt = nil
+            activeWorkout.exerciseStates[index].liveStatus = .completed
+            activeWorkout.exerciseStates[index].adjustmentNote = "Exercise complete. Move on when you are ready."
+        } else {
+            activeWorkout.exerciseStates[index].phaseStartedAt = date
+            activeWorkout.exerciseStates[index].liveStatus = .breakTime
+            activeWorkout.exerciseStates[index].adjustmentNote = "Break started automatically. Start the next set when you are ready."
+        }
 
         let exerciseState = activeWorkout.exerciseStates[index]
         let intervalSincePreviousSet = activeWorkout.loggedSets
@@ -250,31 +254,6 @@ final class AppStore: ObservableObject {
         self.activeWorkout = activeWorkout
     }
 
-    func startBreak(for exerciseID: UUID, at date: Date = .now) {
-        guard var activeWorkout = activeWorkoutForToday(referenceDate: date) else { return }
-        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
-
-        clearOtherActivePhases(in: &activeWorkout, excluding: exerciseID)
-        activeWorkout.exerciseStates[index].liveStatus = .breakTime
-        activeWorkout.exerciseStates[index].phaseStartedAt = date
-        activeWorkout.exerciseStates[index].adjustmentNote = "Break running. Start the next set when you feel ready."
-        self.activeWorkout = activeWorkout
-    }
-
-    func endBreak(for exerciseID: UUID, at date: Date = .now) {
-        guard var activeWorkout = activeWorkoutForToday(referenceDate: date) else { return }
-        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
-        guard activeWorkout.exerciseStates[index].liveStatus == .breakTime else { return }
-
-        activeWorkout.exerciseStates[index].lastBreakDuration = activeWorkout.exerciseStates[index].phaseStartedAt.map { date.timeIntervalSince($0) }
-        activeWorkout.exerciseStates[index].phaseStartedAt = nil
-        activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
-        activeWorkout.exerciseStates[index].adjustmentNote = activeWorkout.exerciseStates[index].liveStatus == .completed
-            ? "Exercise complete."
-            : "Break finished. Ready for the next set."
-        self.activeWorkout = activeWorkout
-    }
-
     func setBreakTarget(for exerciseID: UUID, seconds: Int) {
         guard var activeWorkout = activeWorkoutForToday() else { return }
         guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
@@ -283,16 +262,15 @@ final class AppStore: ObservableObject {
         self.activeWorkout = activeWorkout
     }
 
-    func updateDifficulty(for exerciseID: UUID, feedback: EffortFeedback) {
+    func updateDifficulty(for exerciseID: UUID, score: Int) {
         guard var activeWorkout = activeWorkoutForToday() else { return }
         guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
 
+        let feedback = EffortFeedback(score: score)
         let currentWeight = activeWorkout.exerciseStates[index].currentWeight
         activeWorkout.exerciseStates[index].currentWeight = adjustedWeight(from: currentWeight, feedback: feedback)
         activeWorkout.exerciseStates[index].lastFeedback = feedback
-        activeWorkout.exerciseStates[index].adjustmentNote = feedback == .tooEasy
-            ? "Try a slightly stronger next set if your form still feels clean."
-            : "Scale this down a touch and keep the reps crisp."
+        activeWorkout.exerciseStates[index].adjustmentNote = feedback.coachingNote
 
         self.activeWorkout = activeWorkout
     }
@@ -343,13 +321,17 @@ final class AppStore: ObservableObject {
         on date: Date,
         title: String,
         focusArea: String,
-        estimatedMinutes: Int
+        estimatedMinutes: Int,
+        resetPlan: Bool = false
     ) {
         guard var workoutDay = editableWorkoutDay(for: date) else { return }
 
         workoutDay.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        workoutDay.focusArea = focusArea.trimmingCharacters(in: .whitespacesAndNewlines)
+        workoutDay.focusArea = resetPlan ? "" : focusArea.trimmingCharacters(in: .whitespacesAndNewlines)
         workoutDay.estimatedMinutes = max(estimatedMinutes, 10)
+        if resetPlan {
+            workoutDay.exercises = []
+        }
         workoutDay.kind = resolvedWorkoutKind(
             from: workoutDay.title,
             existingKind: workoutDay.kind
@@ -439,7 +421,14 @@ final class AppStore: ObservableObject {
 
     private func adjustedWeight(from current: String, feedback: EffortFeedback) -> String {
         if current.localizedCaseInsensitiveContains("bodyweight") {
-            return feedback == .tooEasy ? "Bodyweight + 10 lb" : "Assisted bodyweight"
+            switch feedback.weightAdjustment {
+            case let adjustment where adjustment > 0:
+                return "Bodyweight + 10 lb"
+            case let adjustment where adjustment < 0:
+                return "Assisted bodyweight"
+            default:
+                return current
+            }
         }
 
         let digits = current.components(separatedBy: CharacterSet.decimalDigits.inverted)
@@ -448,7 +437,7 @@ final class AppStore: ObservableObject {
             return current
         }
 
-        let updatedValue = max(5, value + (feedback == .tooEasy ? 5 : -5))
+        let updatedValue = max(5, value + feedback.weightAdjustment)
 
         if let range = current.range(of: valueString) {
             return current.replacingCharacters(in: range, with: "\(updatedValue)")
@@ -501,21 +490,11 @@ final class AppStore: ObservableObject {
             workoutDay.title = workoutDay.exercises.isEmpty ? "Open Day" : "Open Session"
         }
 
-        if workoutDay.focusArea.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            workoutDay.focusArea = workoutDay.exercises.isEmpty
-                ? "Leave the day open or add a session when you want."
-                : "Flexible session for today"
-        }
-
         if workoutDay.exercises.isEmpty {
             workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 20)
         } else {
             if workoutDay.title == "Recovery" {
                 workoutDay.title = "Open Session"
-            }
-
-            if workoutDay.focusArea == "Mobility, walking, light stretching" {
-                workoutDay.focusArea = "Flexible session for today"
             }
 
             workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 12 + (workoutDay.exercises.count * 7))
@@ -689,7 +668,7 @@ extension AppStore {
                     hint: exercise.hint,
                     completedSets: min(index, 2),
                     currentWeight: exercise.suggestedWeight,
-                    lastFeedback: index == 0 ? .tooEasy : nil,
+                    lastFeedback: index == 0 ? EffortFeedback(score: 8) : nil,
                     adjustmentNote: index == 0 ? "Try a slightly stronger next set if your form still feels clean." : nil
                 )
             },
@@ -710,7 +689,7 @@ extension AppStore {
                     reps: customizedToday.exercises[0].targetRepCount,
                     weight: "55 lb",
                     intervalSincePreviousSet: 175,
-                    feedback: .tooEasy
+                    feedback: EffortFeedback(score: 8)
                 )
             ]
         )

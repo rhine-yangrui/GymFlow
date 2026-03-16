@@ -40,11 +40,66 @@ enum WorkoutDayKind: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum EffortFeedback: String, CaseIterable, Codable, Identifiable {
-    case tooEasy = "Too Easy"
-    case tooHard = "Too Hard"
+struct EffortFeedback: Codable, Equatable {
+    var score: Int
 
-    var id: String { rawValue }
+    init(score: Int) {
+        self.score = min(max(score, 1), 10)
+    }
+
+    var summary: String {
+        "\(score)/10"
+    }
+
+    var weightAdjustment: Int {
+        switch score {
+        case 1...4:
+            return -5
+        case 8...10:
+            return 5
+        default:
+            return 0
+        }
+    }
+
+    var coachingNote: String {
+        switch score {
+        case 1...3:
+            return "That looked very hard. Scale the next set down and keep your form clean."
+        case 4:
+            return "A little too hard. Small reduction recommended for the next set."
+        case 5...7:
+            return "Solid working range. Keep the next set around this effort."
+        case 8...9:
+            return "That looked comfortable. Add a little load if your form stays sharp."
+        default:
+            return "Very easy. Increase the challenge for the next set if you want more from it."
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if let score = try? container.decode(Int.self) {
+            self.init(score: score)
+            return
+        }
+
+        let legacyValue = try container.decode(String.self)
+        switch legacyValue.lowercased() {
+        case "too easy":
+            self.init(score: 8)
+        case "too hard":
+            self.init(score: 3)
+        default:
+            self.init(score: 6)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(score)
+    }
 }
 
 enum ExerciseLiveStatus: String, CaseIterable, Codable, Identifiable {

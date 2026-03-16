@@ -142,9 +142,11 @@ struct WorkoutCustomizationSheet: View {
             if let workoutDay {
                 Text(workoutDay.title)
                     .font(.title2.bold())
-                Text(workoutDay.focusArea)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if workoutDay.focusArea.isEmpty == false {
+                    Text(workoutDay.focusArea)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 Text("\(workoutDay.exercises.count) exercises • About \(workoutDay.estimatedMinutes) min")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.accent)
@@ -298,6 +300,10 @@ struct SessionDetailsSheet: View {
         return topic.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var existingTopic: String {
+        workoutDay?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     private var resolvedMinutes: Int {
         minuteOptions.contains(estimatedMinutes) ? estimatedMinutes : 35
     }
@@ -359,7 +365,8 @@ struct SessionDetailsSheet: View {
                             on: date,
                             title: resolvedTopic,
                             focusArea: focusArea.trimmingCharacters(in: .whitespacesAndNewlines),
-                            estimatedMinutes: resolvedMinutes
+                            estimatedMinutes: resolvedMinutes,
+                            resetPlan: resolvedTopic != existingTopic
                         )
                         dismiss()
                     }

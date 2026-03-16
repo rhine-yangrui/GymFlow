@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ExerciseCard: View {
+    @State private var isCustomBreakSheetPresented = false
+
     var exercise: Exercise
     var completedSets: Int
     var currentWeight: String
@@ -13,14 +15,12 @@ struct ExerciseCard: View {
     var breakTargetSeconds: Int
     var onStartTraining: () -> Void
     var onFinishSet: () -> Void
-    var onStartBreak: () -> Void
-    var onEndBreak: () -> Void
     var onBreakTargetSelected: (Int) -> Void
-    var onTooEasy: () -> Void
-    var onTooHard: () -> Void
+    var onEffortSelected: (Int) -> Void
     var onEdit: () -> Void
 
-    private let breakOptions = [45, 60, 90, 120]
+    private let breakOptions = [60, 90, 120]
+    private let effortColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
 
     private var isComplete: Bool {
         completedSets >= exercise.targetSets
@@ -36,13 +36,13 @@ struct ExerciseCard: View {
             return "Log Set \(nextSetNumber) of \(exercise.targetSets)"
         case .completed:
             return "All Sets Done"
-        default:
+        case .ready, .breakTime:
             return "Start Set \(nextSetNumber) of \(exercise.targetSets)"
         }
     }
 
-    private var breakTitle: String {
-        liveStatus == .breakTime ? "End Break" : "Break"
+    private var usesCustomBreakTarget: Bool {
+        breakOptions.contains(breakTargetSeconds) == false
     }
 
     private var statusColor: Color {
@@ -115,34 +115,10 @@ struct ExerciseCard: View {
             .disabled(isComplete)
             .opacity(isComplete ? 0.45 : 1)
 
-            HStack(spacing: 12) {
-                feedbackButton(title: "Too Easy", icon: "arrow.up.circle", tint: AppTheme.accentWarm, action: onTooEasy)
-                feedbackButton(title: "Too Hard", icon: "arrow.down.circle", tint: AppTheme.warning, action: onTooHard)
-            }
-
-            Button(action: {
-                if liveStatus == .breakTime {
-                    onEndBreak()
-                } else {
-                    onStartBreak()
-                }
-            }) {
-                Label(breakTitle, systemImage: liveStatus == .breakTime ? "pause.circle.fill" : "timer")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.primary)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 46)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.primary.opacity(0.06))
-                    )
-            }
-            .buttonStyle(.plain)
-            .disabled(liveStatus == .training)
-            .opacity(liveStatus == .training ? 0.45 : 1)
+            effortScale
 
             if let lastFeedback {
-                Label("Last adjustment: \(lastFeedback.rawValue)", systemImage: "slider.horizontal.3")
+                Label("Last effort: \(lastFeedback.summary)", systemImage: "slider.horizontal.3")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -156,6 +132,11 @@ struct ExerciseCard: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.06))
         )
+        .sheet(isPresented: $isCustomBreakSheetPresented) {
+            BreakTargetSheet(selectedSeconds: breakTargetSeconds) { seconds in
+                onBreakTargetSelected(seconds)
+            }
+        }
     }
 
     private var timingBlock: some View {
@@ -214,6 +195,21 @@ struct ExerciseCard: View {
                             }
                             .buttonStyle(.plain)
                         }
+
+                        Button {
+                            isCustomBreakSheetPresented = true
+                        } label: {
+                            Text(usesCustomBreakTarget ? "\(breakTargetSeconds)s" : "Custom")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(usesCustomBreakTarget ? .white : Color.primary)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 34)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(usesCustomBreakTarget ? AppTheme.accent : Color.primary.opacity(0.06))
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -231,14 +227,14 @@ struct ExerciseCard: View {
         case .training:
             phaseCard(
                 title: "Training timer",
-                subtitle: "The set timer starts as soon as you begin the set.",
+                subtitle: "Log the set when you finish. The break timer starts automatically after that.",
                 tint: AppTheme.accentWarm,
                 targetText: nil
             )
         case .breakTime:
             phaseCard(
                 title: "Break timer",
-                subtitle: "Use the preset target or end the break whenever you are ready.",
+                subtitle: "The break started after your last logged set. Tap Start Set when you are ready to go again.",
                 tint: AppTheme.warning,
                 targetText: "Target \(intervalLabel(TimeInterval(breakTargetSeconds)))"
             )
@@ -250,7 +246,7 @@ struct ExerciseCard: View {
         case .ready:
             phaseSummary(
                 title: "Ready for set \(nextSetNumber)",
-                subtitle: "Tap Start Set when you begin, then log the set when it is done."
+                subtitle: "Tap Start Set when you begin. Logging the set starts the break timer automatically."
             )
         }
     }
@@ -339,18 +335,97 @@ struct ExerciseCard: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    private func feedbackButton(title: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.primary)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 46)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(tint.opacity(0.12))
-                )
+    private var effortScale: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Effort scale")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: effortColumns, spacing: 8) {
+                ForEach(1...10, id: \.self) { score in
+                    Button {
+                        onEffortSelected(score)
+                    } label: {
+                        Text("\(score)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(lastFeedback?.score == score ? .white : Color.primary)
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 40)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(lastFeedback?.score == score ? effortColor(for: score) : Color.primary.opacity(0.06))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Text("1 = too hard • 10 = too easy")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+    }
+
+    private func effortColor(for score: Int) -> Color {
+        switch score {
+        case 1...4:
+            return AppTheme.warning
+        case 8...10:
+            return AppTheme.accentWarm
+        default:
+            return AppTheme.accent
+        }
+    }
+}
+
+private struct BreakTargetSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedSeconds: Int
+
+    let onSave: (Int) -> Void
+
+    private let options = Array(stride(from: 30, through: 300, by: 15))
+
+    init(selectedSeconds: Int, onSave: @escaping (Int) -> Void) {
+        _selectedSeconds = State(initialValue: BreakTargetSheet.closestOption(to: selectedSeconds))
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Custom break target") {
+                    Picker("Seconds", selection: $selectedSeconds) {
+                        ForEach(options, id: \.self) { option in
+                            Text("\(option) sec").tag(option)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 120)
+                }
+            }
+            .navigationTitle("Break Target")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        onSave(selectedSeconds)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private static func closestOption(to seconds: Int) -> Int {
+        let options = Array(stride(from: 30, through: 300, by: 15))
+        return options.min(by: { abs($0 - seconds) < abs($1 - seconds) }) ?? 90
     }
 }

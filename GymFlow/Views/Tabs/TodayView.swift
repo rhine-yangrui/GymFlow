@@ -166,31 +166,13 @@ struct TodayView: View {
                                 store.finishTrainingAndLogSet(for: exercise.id)
                             }
                         },
-                        onStartBreak: {
-                            FeedbackEngine.impact()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                store.startBreak(for: exercise.id)
-                            }
-                        },
-                        onEndBreak: {
-                            FeedbackEngine.impact()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                store.endBreak(for: exercise.id)
-                            }
-                        },
                         onBreakTargetSelected: { seconds in
                             store.setBreakTarget(for: exercise.id, seconds: seconds)
                         },
-                        onTooEasy: {
+                        onEffortSelected: { score in
                             FeedbackEngine.impact()
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                store.updateDifficulty(for: exercise.id, feedback: .tooEasy)
-                            }
-                        },
-                        onTooHard: {
-                            FeedbackEngine.impact()
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                store.updateDifficulty(for: exercise.id, feedback: .tooHard)
+                                store.updateDifficulty(for: exercise.id, score: score)
                             }
                         },
                         onEdit: {
