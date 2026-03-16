@@ -14,6 +14,9 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 22) {
                 headerCard
                 bodyContent
+                if viewModel.completedSessionsToday.isEmpty == false {
+                    completedSessionsSection
+                }
             }
             .padding(20)
             .padding(.bottom, 24)
@@ -92,9 +95,7 @@ struct TodayView: View {
 
     @ViewBuilder
     private var bodyContent: some View {
-        if let completedSession = viewModel.completedSession {
-            completedWorkoutCard(completedSession)
-        } else if let activeWorkout = viewModel.activeWorkout {
+        if let activeWorkout = viewModel.activeWorkout {
             activeWorkoutContent(activeWorkout)
         } else if let todayPlan = viewModel.todayPlan, todayPlan.isRecovery == false || todayPlan.exercises.isEmpty == false {
             startWorkoutContent(todayPlan)
@@ -109,7 +110,9 @@ struct TodayView: View {
                 title: day.exercises.isEmpty ? "Build today’s workout first" : "Start today with one tap",
                 message: day.exercises.isEmpty
                     ? "Add your own exercises or edit the ones you want, then start the session."
-                    : "Every exercise below can be edited before you begin, so today’s workout can match what you actually want to do.",
+                    : viewModel.completedSessionsToday.isEmpty
+                        ? "Every exercise below can be edited before you begin, so today’s workout can match what you actually want to do."
+                        : "You can still edit today’s setup and start another session whenever you want.",
                 icon: day.exercises.isEmpty ? "slider.horizontal.3" : "figure.strengthtraining.traditional"
             )
 
@@ -212,51 +215,60 @@ struct TodayView: View {
         }
     }
 
-    private func completedWorkoutCard(_ session: WorkoutSession) -> some View {
+    private var completedSessionsSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 16) {
-                ProgressRing(progress: 1, valueText: "Done", caption: "Today")
-                    .frame(width: 92, height: 92)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Today’s workout is finished")
-                        .font(.title3.bold())
-                    Text("\(session.dayTitle) completed with \(session.loggedSets.count) logged sets.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text("Nice work. Recovery and consistency matter just as much as intensity.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(AppTheme.card)
+            SectionHeader(
+                title: "Today’s sessions",
+                subtitle: "Finished sessions stay here, and you can still edit the workout and start another one."
             )
 
-            SectionHeader(title: "Session recap", subtitle: "A quick look at what you finished today.")
+            ForEach(viewModel.completedSessionsToday) { session in
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 16) {
+                        ProgressRing(progress: 1, valueText: "Done", caption: "Session")
+                            .frame(width: 82, height: 82)
 
-            ForEach(session.loggedSets.prefix(4)) { loggedSet in
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(loggedSet.exerciseName)
-                            .font(.headline)
-                        Text(sessionLine(for: loggedSet))
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(session.dayTitle)
+                                .font(.title3.bold())
+                            Text(
+                                "\(session.loggedSets.count) logged sets • \(intervalString(from: session.completedAt.timeIntervalSince(session.startedAt))) total • finished \(session.completedAt.formatted(date: .omitted, time: .shortened))"
+                            )
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            Text("Use this as a recap, then build the next session however you want.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .fill(AppTheme.card)
+                    )
 
-                    Spacer()
+                    ForEach(session.loggedSets.prefix(3)) { loggedSet in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(loggedSet.exerciseName)
+                                    .font(.headline)
+                                Text(sessionLine(for: loggedSet))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
 
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(AppTheme.success)
+                            Spacer()
+
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(AppTheme.success)
+                        }
+                        .padding(18)
+                        .background(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(AppTheme.card)
+                        )
+                    }
                 }
-                .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(AppTheme.card)
-                )
             }
         }
     }

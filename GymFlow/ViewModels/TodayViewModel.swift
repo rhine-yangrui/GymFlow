@@ -26,6 +26,10 @@ struct TodayViewModel {
         store.completedSession()
     }
 
+    var completedSessionsToday: [WorkoutSession] {
+        store.completedSessions(on: .now)
+    }
+
     var todayPlan: WorkoutDay? {
         store.workoutDay(for: .now)
     }
@@ -64,12 +68,16 @@ struct TodayViewModel {
             return "Build your plan once and keep the next step obvious."
         }
 
+        let sessionSummary = completedSessionsToday.isEmpty
+            ? ""
+            : " \(completedSessionsToday.count) session\(completedSessionsToday.count == 1 ? "" : "s") logged today."
+
         if todayPlan.isRecovery {
-            return "Today is lighter on purpose. Recovery still counts."
+            return "Today is lighter on purpose. Recovery still counts.\(sessionSummary)"
         }
 
         let prefix = isCustomizedToday ? "Customized for today. " : ""
-        return "\(prefix)\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min."
+        return "\(prefix)\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min.\(sessionSummary)"
     }
 
     func state(for exercise: Exercise) -> ActiveWorkoutExerciseState? {

@@ -127,12 +127,17 @@ final class AppStore: ObservableObject {
     }
 
     func completedSession(on date: Date = .now) -> WorkoutSession? {
-        completedSessions.first(where: { calendar.isDate($0.completedAt, inSameDayAs: date) })
+        completedSessions(on: date).first
+    }
+
+    func completedSessions(on date: Date = .now) -> [WorkoutSession] {
+        completedSessions
+            .filter { calendar.isDate($0.completedAt, inSameDayAs: date) }
+            .sorted { $0.completedAt > $1.completedAt }
     }
 
     func startWorkout(on date: Date = .now) {
         guard activeWorkoutForToday(referenceDate: date) == nil else { return }
-        guard completedSession(on: date) == nil else { return }
         guard let workoutDay = workoutDay(for: date), workoutDay.isRecovery == false else { return }
         guard workoutDay.exercises.isEmpty == false else { return }
 
@@ -305,7 +310,6 @@ final class AppStore: ObservableObject {
             loggedSets: activeWorkout.loggedSets
         )
 
-        completedSessions.removeAll { calendar.isDate($0.completedAt, inSameDayAs: date) }
         completedSessions.insert(session, at: 0)
         completedSessions.sort { $0.completedAt > $1.completedAt }
         self.activeWorkout = nil
