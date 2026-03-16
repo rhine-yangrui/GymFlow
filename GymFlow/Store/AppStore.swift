@@ -226,7 +226,9 @@ final class AppStore: ObservableObject {
     }
 
     func deleteCompletedSession(_ sessionID: UUID) {
-        completedSessions.removeAll { $0.id == sessionID }
+        completedSessions = completedSessions
+            .filter { $0.id != sessionID }
+            .sorted { $0.completedAt > $1.completedAt }
     }
 
     func startWorkout(on date: Date = .now) {
