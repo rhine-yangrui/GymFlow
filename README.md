@@ -1,269 +1,217 @@
 # GymFlow
-Build a polished iPhone app prototype in SwiftUI called “GymFlow”.
 
-Goal:
-Create a UX-focused fitness planning and workout tracking app for college students. This is a local-only prototype for Xcode, not a production app. The app should feel realistic, visually polished, and easy to demo in 5 minutes for a UX presentation.
+GymFlow is a local-only SwiftUI iPhone app for workout planning, session tracking, and recovery check-ins. It is built as a polished prototype, but it is fully runnable in Xcode and supports persistent local state through `UserDefaults`.
 
-Technical requirements:
-- Use SwiftUI only
-- Target iPhone
-- No backend
-- No login
-- No HealthKit
-- Use local mock data and local persistence only
-- Use @AppStorage / UserDefaults or a simple local state store
-- Make the project compile and run in Xcode
-- Organize code cleanly into models, view models, views, and reusable components
-- Add English comments only
-- Use SF Symbols and native iOS design patterns
-- Support dark mode
-- Use accessible sizing and clear contrast
-- Keep architecture simple and stable
+This README is split into two audiences:
+- users: how to use the app day to day
+- developers: how to run, understand, and extend the project
 
-App concept:
-GymFlow helps students start working out quickly, follow a plan without overthinking, log workouts with minimal friction, see progress clearly, and avoid overtraining.
+## User Guide
 
-Primary UX principles:
-- Reduce decision fatigue
-- Frontload value
-- Keep navigation shallow
-- Make the main CTA obvious
-- Design for quick scanning
-- Use supportive, non-judgmental microcopy
-- Show progress without creating pressure
-- Include recovery and safety as part of the experience
-- Use empty states well
-- Make controls feel touch-friendly and accessible
+### What the app does
 
-Main structure:
-Use a TabView with exactly 4 tabs:
-1. Today
-2. Plan
-3. Progress
-4. Recovery
+GymFlow helps you:
+- build a weekly workout plan from onboarding answers
+- edit each day freely, including the session topic and exercises
+- run multiple workout sessions in the same day
+- track training time, set time, and break time per exercise
+- rate effort on a `1-10` scale after a set
+- log recovery check-ins and get a lighter recommendation when needed
 
-App flow:
-On first launch, show a 4-step onboarding flow before the tab interface appears.
+Everything is stored locally on the device or simulator. There is no login, backend, or HealthKit integration.
 
-Onboarding screens:
-1. Goal selection
-   - Build muscle
-   - Lose fat
-   - Stay consistent
-   - Chest focus
-   - General fitness
+### First launch
 
-2. Training frequency
-   - 2 days
-   - 3 days
-   - 4 days
-   - 5+ days
+On first launch, GymFlow shows a short onboarding flow:
+1. fitness goal
+2. training frequency
+3. workout location
+4. experience level
 
-3. Workout location
-   - Gym
-   - Dorm / home
-   - Both
+After onboarding, the app generates a weekly plan and opens the main 4-tab interface:
+- `Today`
+- `Plan`
+- `Progress`
+- `Recovery`
 
-4. Experience level
-   - Beginner
-   - Intermediate
-   - Returning after a break
+### Today tab
 
-Onboarding UX details:
-- Show a progress indicator
-- One primary action per screen
-- Large tap targets
-- Friendly microcopy
-- Final summary screen that says the user’s plan is ready
-- Generate a simple plan based on responses
+The `Today` tab is the main screen.
 
-Tab 1: Today
-Purpose:
-This is the home screen and most important page. It should answer: “What should I do today?”
+You can:
+- review today’s session
+- edit the session topic and duration
+- add, edit, swap, or remove exercises
+- start a workout
+- run multiple sessions in the same day
 
-UI content:
-- Greeting/header
-- Today’s workout title
-- Estimated duration
-- Progress ring or progress bar for today
-- Exercise cards
-- Each exercise card shows:
-  - exercise name
-  - target sets and reps
-  - suggested weight
-  - short hint line
-  - log set button
-  - too easy button
-  - too hard button
-- Rest timer card or simple timer section
-- Primary CTA: Finish Workout
-- If no workout has been started, show a clear CTA: Start Today’s Workout
+Current exercise flow:
+1. tap `Start Set`
+2. the training timer starts for that exercise
+3. tap `Log Set` when the set is done
+4. the break timer starts automatically if more sets remain
+5. tap `Start Set` again to begin the next set
 
-Interaction:
-- Logging a set updates progress
-- Finish Workout marks the session complete
-- Add subtle animations and haptic-style feedback placeholders if appropriate
-- Include an empty state for first-time use
+Each exercise card includes:
+- exercise name
+- sets and reps
+- suggested weight
+- inline timer state
+- break target: `60s`, `90s`, `120s`, or `Custom`
+- effort scale from `1` to `10`
+- `Edit`
 
-Microcopy examples:
-- Start Today’s Workout
-- Log First Set
-- Too Easy
-- Too Hard
-- Finish Workout
-- You’re halfway through today’s session
+Effort scale meaning:
+- lower numbers mean the set felt too hard
+- middle numbers mean the set felt about right
+- higher numbers mean the set felt too easy
 
-Tab 2: Plan
-Purpose:
-Show the user’s weekly structure and make the plan feel understandable and adjustable.
+GymFlow uses that score to adjust the next-set suggestion locally.
 
-UI content:
-- Weekly plan overview
-- Cards for each day of the week
-- Each day shows title like Push / Pull / Legs / Full Body / Recovery
-- Show focus area and estimated time
-- Highlight today
-- Button: Adjust My Plan
-- Button or sheet action: Swap Exercise
+### Editing today’s topic
 
-Interaction:
-- Tapping a day shows a detail sheet
-- Adjust My Plan opens a simple editable sheet
-- Swap Exercise opens a sheet with 2–3 substitute options
-- Keep this light and prototype-friendly
+You can edit the session topic from Today or Plan.
 
-Tab 3: Progress
-Purpose:
-Make progress visible and motivating without overwhelming the user.
+Important behavior:
+- if you change today’s topic, GymFlow clears the previous focus text and exercise list for that day
+- this is intentional, so you can rebuild the session from scratch without being forced into the old plan
 
-UI content:
-- Weekly completion ring
-- Current streak
-- Total workouts completed
-- Small personal records section
-- Chest press trend or benchmark card
-- Milestones / badges section
-- Recent wins card
+### Plan tab
 
-Include empty states:
-- No workouts logged yet
-- Complete today’s session to build your first streak
+The `Plan` tab shows the weekly overview.
 
-Visual style:
-- Cards
-- Simple charts or trend bars
-- Clear hierarchy
-- Focus on clarity more than data density
+You can:
+- open any day
+- change the day topic, focus text, and estimated time
+- add your own exercises
+- swap or remove exercises
+- reset a customized day back to the generated plan
 
-Tab 4: Recovery
-Purpose:
-Show that recovery and safety are part of fitness UX.
+Topics are flexible. You can use labels like:
+- `Push`
+- `Legs`
+- `Upper`
+- `Conditioning`
+- `Open Session`
+- any custom topic you type yourself
 
-UI content:
-- Daily recovery check-in
-- 3 quick questions:
-  - energy level
-  - soreness
-  - sleep quality
-- Based on answers, show recommendation:
-  - Train as planned
-  - Go lighter today
-  - Take a recovery day
-- Recovery tips card
-- Sleep / hydration / soreness guidance
-- Beginner-safe reminders
+### Progress tab
 
-Tone:
-- Supportive, calm, not harsh
-- Never shame the user
-- Example text:
-  - Recovery matters too
-  - A lighter day can support long-term consistency
-  - Rest is part of progress
+The `Progress` tab summarizes momentum without dense analytics.
 
-Design system:
-- Native iOS look using SwiftUI
-- Use rounded cards, spacing, and clear hierarchy
-- Use SF Symbols consistently
-- Main accent color should feel energetic but calm
-- Use semantic colors where possible
-- Make all important controls large and finger-friendly
-- Support Dynamic Type as much as practical
-- Avoid relying only on color to show state
-- Keep screens uncluttered
+It includes:
+- weekly completion
+- current streak
+- total completed workouts
+- lightweight PRs
+- milestone badges
+- recent wins
 
-Reusable components to create:
-- PrimaryButton
-- SecondaryButton
-- ProgressRing
-- ExerciseCard
-- StatCard
-- EmptyStateView
-- SectionHeader
-- RecoveryRecommendationCard
+If no workouts have been logged yet, it shows an empty state instead of fake data.
 
-Data model suggestions:
-- UserProfile
-- WorkoutPlan
-- WorkoutDay
-- Exercise
-- LoggedSet
-- ProgressStats
-- RecoveryCheckIn
-- Badge
+### Recovery tab
 
-State and persistence:
-- Save onboarding completion
-- Save generated plan
-- Save logged workouts
-- Save streak / stats
-- Use local-only persistence
+The `Recovery` tab lets you save a daily check-in for:
+- energy
+- soreness
+- sleep
 
-Demo polish:
-- Add preview data
-- Add smooth transitions between onboarding and main app
-- Add light animations for progress updates
-- Make the app feel complete enough for a class presentation
-- Prioritize UI polish and UX clarity over technical complexity
+Based on those inputs, the app recommends one of:
+- train as planned
+- go lighter today
+- take a recovery day
 
-Important:
-- Do not overengineer
-- Do not add backend or auth
-- Do not add social features
-- Do not add complex AI features
-- Keep the code clean, modular, and runnable
-- Include a short README explaining app structure and how the UX goals map to the screens
+## Developer Guide
 
-Please generate the full SwiftUI project structure and all necessary files.
+### Tech stack
 
-## Implementation Notes
+- SwiftUI
+- iOS 17
+- Swift 6
+- local persistence with `UserDefaults`
+- XcodeGen for project generation
 
-### Project structure
-- `GymFlow.xcodeproj`: generated Xcode project for the iPhone SwiftUI app
-- `project.yml`: XcodeGen source used to generate the project cleanly
-- `GymFlow/App`: app entry point and onboarding-to-tabs root flow
-- `GymFlow/Models`: Codable app models for profile, plan, workouts, progress, and recovery
-- `GymFlow/Store`: local `UserDefaults` persistence and plan generation
-- `GymFlow/ViewModels`: screen-focused view models for onboarding, today, plan, progress, and recovery
-- `GymFlow/Views/Components`: reusable cards, buttons, progress ring, and empty states
-- `GymFlow/Views/Onboarding`: 4-step onboarding plus summary screen
-- `GymFlow/Views/Tabs`: Today, Plan, Progress, and Recovery tab screens
+### Project layout
 
-### UX mapping
-- `Today`: keeps the next action obvious with a start CTA, clear workout card stack, rest timer, and fast set logging
-- `Plan`: keeps navigation shallow with one weekly overview, quick day detail sheets, and simple adjust/swap flows
-- `Progress`: shows momentum with a weekly completion ring, streak, records, badges, and recent wins without dense analytics
-- `Recovery`: makes safety visible with a daily check-in, gentle recommendation logic, and calm recovery guidance
-- Onboarding: reduces decision fatigue by asking one question per screen, showing progress, and generating the weekly plan automatically
+- `project.yml`: XcodeGen source of truth
+- `GymFlow.xcodeproj`: generated Xcode project
+- `GymFlow/App`: app entry and root flow
+- `GymFlow/Models`: Codable models for workouts, sessions, recovery, and user profile
+- `GymFlow/Store`: `AppStore` persistence and `WorkoutPlanGenerator`
+- `GymFlow/ViewModels`: screen-specific view models
+- `GymFlow/Views/Components`: reusable UI pieces
+- `GymFlow/Views/Onboarding`: onboarding flow
+- `GymFlow/Views/Tabs`: Today, Plan, Progress, and Recovery screens
+- `GymFlow/Theme`: colors and app-wide visual styling
 
-### Local persistence
-- `AppStore` saves onboarding state, generated plan, active workout, completed sessions, and recovery check-ins in `UserDefaults`
-- No backend, auth, or external fitness integrations are used
+### Important files
 
-### Build
-- Generate the project with `xcodegen generate`
-- Build from the command line with:
+- [GymFlowApp.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/App/GymFlowApp.swift): app entry point and environment store injection
+- [RootView.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/App/RootView.swift): onboarding-to-tabs root switch
+- [AppStore.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Store/AppStore.swift): local persistence, active workout logic, day overrides, multi-session support
+- [WorkoutPlanGenerator.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Store/WorkoutPlanGenerator.swift): generated starter plan content
+- [TodayView.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Views/Tabs/TodayView.swift): main workout flow
+- [ExerciseCard.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Views/Components/ExerciseCard.swift): per-exercise timers, break targets, effort scale
+- [WorkoutCustomizationSheet.swift](/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Views/Components/WorkoutCustomizationSheet.swift): day editing and exercise editing sheets
+
+### Build and run
+
+Generate the Xcode project from `project.yml`:
+
+```bash
+xcodegen generate
+```
+
+Open the project in Xcode:
+
+```bash
+open GymFlow.xcodeproj
+```
+
+Command-line build:
 
 ```bash
 xcodebuild -project GymFlow.xcodeproj -scheme GymFlow -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
+
+### Persistence model
+
+`AppStore` stores the following locally:
+- onboarding profile
+- generated plan
+- daily customized overrides
+- active workout
+- completed sessions
+- recovery check-ins
+
+There is no sync layer. If you delete the app from the simulator, its local data is removed.
+
+### Current behavior worth knowing
+
+- only one active workout session can run at a time
+- multiple completed sessions can exist on the same day
+- changing a day topic resets that day’s previous plan so the user can rebuild it freely
+- logging a set automatically starts a break if the exercise is not finished
+- effort feedback is numeric, but older saved `Too Easy` / `Too Hard` values are still decoded safely
+
+### Safe extension points
+
+If you want to extend the app, the cleanest places are:
+- `AppStore` for new persistence or workout rules
+- `WorkoutCustomizationSheet` for richer editing controls
+- `ExerciseCard` for timer and logging UX
+- `ProgressViewModel` for extra progress summaries
+- `RecoveryViewModel` for additional recovery recommendations
+
+### Resetting local state during development
+
+The easiest reset path is to remove the app from the simulator, or clear the stored `UserDefaults` for the app bundle by reinstalling a clean build.
+
+## Notes
+
+GymFlow is intentionally local-first and prototype-friendly. The code is organized so the UI is easy to demo, while the workout state is still coherent enough to support:
+- editable day topics
+- custom exercise lists
+- multiple sessions per day
+- per-exercise timers
+- local progress history
