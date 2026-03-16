@@ -47,13 +47,36 @@ struct ProgressViewModel {
         store.userProfile?.frequency.weeklySessions ?? 3
     }
 
-    var weeklyCompletionCount: Int {
-        let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: .now)) ?? .now
-        return store.completedSessions.filter { $0.completedAt >= start }.count
+    var weeklyActiveDaysCount: Int {
+        activeDatesThisWeek.count
     }
 
-    var weeklyCompletionProgress: Double {
-        min(Double(weeklyCompletionCount) / Double(max(weeklyGoal, 1)), 1.0)
+    var weeklyActiveDaysProgress: Double {
+        min(Double(weeklyActiveDaysCount) / Double(max(weeklyGoal, 1)), 1.0)
+    }
+
+    var weeklyMinutesGoal: Int {
+        let plannedMinutes = store.weeklySchedule()
+            .reduce(0) { partialResult, scheduledDay in
+                guard scheduledDay.workoutDay.exercises.isEmpty == false else { return partialResult }
+                return partialResult + scheduledDay.workoutDay.estimatedMinutes
+            }
+
+        if plannedMinutes > 0 {
+            return plannedMinutes
+        }
+
+        return weeklyGoal * 40
+    }
+
+    var weeklyMinutesCompleted: Int {
+        sessionsThisWeek.reduce(0) { total, session in
+            total + max(Int(session.completedAt.timeIntervalSince(session.startedAt) / 60), 0)
+        }
+    }
+
+    var weeklyMinutesProgress: Double {
+        min(Double(weeklyMinutesCompleted) / Double(max(weeklyMinutesGoal, 1)), 1.0)
     }
 
     var personalRecords: [PersonalRecord] {
@@ -96,9 +119,9 @@ struct ProgressViewModel {
             Badge(
                 id: "week-complete",
                 title: "Weekly Goal",
-                subtitle: "Hit this week’s planned sessions",
+                subtitle: "Hit this week’s planned training days",
                 icon: "checkmark.seal.fill",
-                isUnlocked: weeklyCompletionCount >= weeklyGoal
+                isUnlocked: weeklyActiveDaysCount >= weeklyGoal
             )
         ]
     }
@@ -142,6 +165,29 @@ struct ProgressViewModel {
         var uniqueDates: [Date] = []
 
         for session in store.completedSessions.sorted(by: { $0.completedAt > $1.completedAt }) {
+            let startOfDay = calendar.startOfDay(for: session.completedAt)
+            if uniqueDates.contains(where: { calendar.isDate($0, inSameDayAs: startOfDay) }) == false {
+                uniqueDates.append(startOfDay)
+            }
+        }
+
+        return uniqueDates
+    }
+
+    private var sessionsThisWeek: [WorkoutSession] {
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: .now) else {
+            return store.completedSessions
+        }
+
+        return store.completedSessions.filter {
+            $0.completedAt >= interval.start && $0.completedAt < interval.end
+        }
+    }
+
+    private var activeDatesThisWeek: [Date] {
+        var uniqueDates: [Date] = []
+
+        for session in sessionsThisWeek.sorted(by: { $0.completedAt > $1.completedAt }) {
             let startOfDay = calendar.startOfDay(for: session.completedAt)
             if uniqueDates.contains(where: { calendar.isDate($0, inSameDayAs: startOfDay) }) == false {
                 uniqueDates.append(startOfDay)

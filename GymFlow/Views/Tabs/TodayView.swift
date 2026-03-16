@@ -110,7 +110,7 @@ struct TodayView: View {
                 icon: day.exercises.isEmpty ? "slider.horizontal.3" : "figure.strengthtraining.traditional"
             )
 
-            SectionHeader(title: day.title, subtitle: "\(day.focusArea) • About \(day.estimatedMinutes) min")
+            SectionHeader(title: day.title, subtitle: day.focusArea.isEmpty ? "Build the session your own way." : day.focusArea)
 
             if day.exercises.isEmpty == false {
                 ForEach(day.exercises) { exercise in

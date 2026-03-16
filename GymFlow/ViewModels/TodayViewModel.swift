@@ -75,7 +75,7 @@ struct TodayViewModel {
         let focusText = todayPlan.focusArea.isEmpty
             ? "Build the session your own way"
             : todayPlan.focusArea
-        return "\(focusText) in about \(todayPlan.estimatedMinutes) min.\(sessionSummary)"
+        return "\(focusText).\(sessionSummary)"
     }
 
     func state(for exercise: Exercise) -> ActiveWorkoutExerciseState? {

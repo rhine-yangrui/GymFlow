@@ -137,7 +137,7 @@ struct OnboardingFlowView: View {
                     Text("\(firstWorkout.title) • \(firstWorkout.focusArea)")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.85))
-                    Text("\(firstWorkout.exercises.count) exercises • About \(firstWorkout.estimatedMinutes) min")
+                    Text("\(firstWorkout.exercises.count) exercises")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                 }

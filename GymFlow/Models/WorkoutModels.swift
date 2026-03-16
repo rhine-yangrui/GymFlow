@@ -185,6 +185,31 @@ struct DailyWorkoutOverride: Identifiable, Codable, Equatable {
     }
 }
 
+struct DefaultWorkoutTemplate: Identifiable, Codable, Equatable {
+    let id: UUID
+    var topicKey: String
+    var title: String
+    var focusArea: String
+    var estimatedMinutes: Int
+    var exercises: [Exercise]
+
+    init(
+        id: UUID = UUID(),
+        topicKey: String,
+        title: String,
+        focusArea: String,
+        estimatedMinutes: Int,
+        exercises: [Exercise]
+    ) {
+        self.id = id
+        self.topicKey = topicKey
+        self.title = title
+        self.focusArea = focusArea
+        self.estimatedMinutes = estimatedMinutes
+        self.exercises = exercises
+    }
+}
+
 struct ScheduledWorkoutDay: Identifiable, Equatable {
     var id: Date { date }
     var date: Date

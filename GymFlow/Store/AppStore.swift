@@ -18,6 +18,12 @@ final class AppStore: ObservableObject {
     @Published private(set) var dailyOverrides: [DailyWorkoutOverride] = [] {
         didSet { save(dailyOverrides, for: .dailyOverrides) }
     }
+    @Published private(set) var defaultWorkoutTemplates: [DefaultWorkoutTemplate] = [] {
+        didSet { save(defaultWorkoutTemplates, for: .defaultWorkoutTemplates) }
+    }
+    @Published private(set) var savedTopicOptions: [String] = [] {
+        didSet { save(savedTopicOptions, for: .savedTopicOptions) }
+    }
     @Published private(set) var recoveryHistory: [RecoveryCheckIn] = [] {
         didSet { save(recoveryHistory, for: .recoveryHistory) }
     }
@@ -41,8 +47,22 @@ final class AppStore: ObservableObject {
         case activeWorkout = "gymflow.activeWorkout"
         case completedSessions = "gymflow.completedSessions"
         case dailyOverrides = "gymflow.dailyOverrides"
+        case defaultWorkoutTemplates = "gymflow.defaultWorkoutTemplates"
+        case savedTopicOptions = "gymflow.savedTopicOptions"
         case recoveryHistory = "gymflow.recoveryHistory"
     }
+
+    private static let builtInTopics = [
+        "Push",
+        "Pull",
+        "Legs",
+        "Upper",
+        "Lower",
+        "Full Body",
+        "Conditioning",
+        "Recovery",
+        "Open Session"
+    ]
 
     init(defaults: UserDefaults = .standard, preview: Bool = false) {
         self.defaults = defaults
@@ -54,6 +74,8 @@ final class AppStore: ObservableObject {
             activeWorkout = sample.activeWorkout
             completedSessions = sample.completedSessions
             dailyOverrides = sample.dailyOverrides
+            defaultWorkoutTemplates = sample.defaultWorkoutTemplates
+            savedTopicOptions = sample.savedTopicOptions
             recoveryHistory = sample.recoveryHistory
         } else {
             userProfile = load(UserProfile.self, for: .userProfile)
@@ -61,6 +83,8 @@ final class AppStore: ObservableObject {
             activeWorkout = load(ActiveWorkout.self, for: .activeWorkout)
             completedSessions = load([WorkoutSession].self, for: .completedSessions) ?? []
             dailyOverrides = load([DailyWorkoutOverride].self, for: .dailyOverrides) ?? []
+            defaultWorkoutTemplates = load([DefaultWorkoutTemplate].self, for: .defaultWorkoutTemplates) ?? []
+            savedTopicOptions = load([String].self, for: .savedTopicOptions) ?? []
             recoveryHistory = load([RecoveryCheckIn].self, for: .recoveryHistory) ?? []
             clearStaleActiveWorkoutIfNeeded()
         }
@@ -119,6 +143,31 @@ final class AppStore: ObservableObject {
                 isCustomized: isCustomizedWorkout(on: date)
             )
         }
+    }
+
+    func topicOptions() -> [String] {
+        var seen: Set<String> = []
+        var result: [String] = []
+
+        for topic in Self.builtInTopics + savedTopicOptions + defaultWorkoutTemplates.map(\.title) {
+            let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = normalizedTopicKey(trimmedTopic)
+            guard trimmedTopic.isEmpty == false, seen.contains(key) == false else { continue }
+            seen.insert(key)
+            result.append(trimmedTopic)
+        }
+
+        return result
+    }
+
+    func defaultWorkoutTemplate(for topic: String) -> DefaultWorkoutTemplate? {
+        let key = normalizedTopicKey(topic)
+        guard key.isEmpty == false else { return nil }
+        return defaultWorkoutTemplates.first(where: { $0.topicKey == key })
+    }
+
+    func hasDefaultWorkoutTemplate(for topic: String) -> Bool {
+        defaultWorkoutTemplate(for: topic) != nil
     }
 
     func activeWorkoutForToday(referenceDate: Date = .now) -> ActiveWorkout? {
@@ -322,7 +371,8 @@ final class AppStore: ObservableObject {
         title: String,
         focusArea: String,
         estimatedMinutes: Int,
-        resetPlan: Bool = false
+        resetPlan: Bool = false,
+        saveTopicAsReusable: Bool = false
     ) {
         guard var workoutDay = editableWorkoutDay(for: date) else { return }
 
@@ -338,6 +388,58 @@ final class AppStore: ObservableObject {
         )
 
         saveCustomizedWorkoutDay(workoutDay, for: date)
+
+        if saveTopicAsReusable {
+            saveTopicOption(workoutDay.title)
+        }
+    }
+
+    func saveWorkoutDayAsDefaultTemplate(on date: Date, topic: String? = nil) {
+        guard let workoutDay = workoutDay(for: date) else { return }
+
+        let title = (topic ?? workoutDay.title).trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = normalizedTopicKey(title)
+        guard title.isEmpty == false, title != "Open Session" else { return }
+
+        let template = DefaultWorkoutTemplate(
+            topicKey: key,
+            title: title,
+            focusArea: workoutDay.focusArea,
+            estimatedMinutes: workoutDay.estimatedMinutes,
+            exercises: clonedExercises(workoutDay.exercises)
+        )
+
+        if let index = defaultWorkoutTemplates.firstIndex(where: { $0.topicKey == key }) {
+            defaultWorkoutTemplates[index] = template
+        } else {
+            defaultWorkoutTemplates.append(template)
+        }
+
+        defaultWorkoutTemplates.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        saveTopicOption(title)
+    }
+
+    func applyDefaultWorkoutTemplate(for topic: String, on date: Date) {
+        guard let template = defaultWorkoutTemplate(for: topic) else { return }
+        guard var workoutDay = editableWorkoutDay(for: date) else { return }
+
+        workoutDay.title = template.title
+        workoutDay.focusArea = template.focusArea
+        workoutDay.estimatedMinutes = template.estimatedMinutes
+        workoutDay.exercises = clonedExercises(template.exercises)
+        workoutDay.kind = resolvedWorkoutKind(from: template.title, existingKind: workoutDay.kind)
+
+        saveCustomizedWorkoutDay(workoutDay, for: date)
+    }
+
+    func saveTopicOption(_ topic: String) {
+        let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = normalizedTopicKey(trimmedTopic)
+        guard trimmedTopic.isEmpty == false, key != normalizedTopicKey("Open Session") else { return }
+        guard savedTopicOptions.contains(where: { normalizedTopicKey($0) == key }) == false else { return }
+
+        savedTopicOptions.append(trimmedTopic)
+        savedTopicOptions.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     func updateExercise(
@@ -520,6 +622,12 @@ final class AppStore: ObservableObject {
         return WorkoutDayKind.allCases.first(where: { $0.rawValue.lowercased() == normalizedTitle }) ?? .custom
     }
 
+    private func normalizedTopicKey(_ topic: String) -> String {
+        topic
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
     private func synchronizeActiveWorkoutIfNeeded(for date: Date, with workoutDay: WorkoutDay) {
         guard var activeWorkout else { return }
         guard calendar.isDate(activeWorkout.date, inSameDayAs: date) else { return }
@@ -601,6 +709,26 @@ final class AppStore: ObservableObject {
         ]
     }
 
+    private func clonedExercises(_ exercises: [Exercise]) -> [Exercise] {
+        exercises.map { exercise in
+            Exercise(
+                name: exercise.name,
+                targetSets: exercise.targetSets,
+                targetReps: exercise.targetReps,
+                suggestedWeight: exercise.suggestedWeight,
+                hint: exercise.hint,
+                alternatives: exercise.alternatives.map {
+                    ExerciseSwapOption(
+                        name: $0.name,
+                        targetReps: $0.targetReps,
+                        suggestedWeight: $0.suggestedWeight,
+                        hint: $0.hint
+                    )
+                }
+            )
+        }
+    }
+
     private func load<Value: Decodable>(_ type: Value.Type, for key: StorageKey) -> Value? {
         guard let data = defaults.data(forKey: key.rawValue) else { return nil }
         return try? decoder.decode(type, from: data)
@@ -626,6 +754,8 @@ extension AppStore {
         activeWorkout: ActiveWorkout?,
         completedSessions: [WorkoutSession],
         dailyOverrides: [DailyWorkoutOverride],
+        defaultWorkoutTemplates: [DefaultWorkoutTemplate],
+        savedTopicOptions: [String],
         recoveryHistory: [RecoveryCheckIn]
     ) {
         let profile = UserProfile(
@@ -719,6 +849,14 @@ extension AppStore {
             workoutDay: customizedToday
         )
 
+        let defaultTemplate = DefaultWorkoutTemplate(
+            topicKey: "push",
+            title: "Push",
+            focusArea: "Reusable push session",
+            estimatedMinutes: 40,
+            exercises: customizedToday.exercises
+        )
+
         let recovery = RecoveryCheckIn(
             date: .now,
             energyLevel: .medium,
@@ -733,6 +871,8 @@ extension AppStore {
             activeWorkout: activeWorkout,
             completedSessions: [completedSession],
             dailyOverrides: [override],
+            defaultWorkoutTemplates: [defaultTemplate],
+            savedTopicOptions: ["Arms", "Athletic Conditioning"],
             recoveryHistory: [recovery]
         )
     }

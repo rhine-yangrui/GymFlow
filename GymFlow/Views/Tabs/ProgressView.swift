@@ -50,19 +50,29 @@ struct ProgressView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 16) {
                 ProgressRing(
-                    progress: viewModel.weeklyCompletionProgress,
-                    valueText: "\(viewModel.weeklyCompletionCount)/\(viewModel.weeklyGoal)",
-                    caption: "This week"
+                    progress: viewModel.weeklyActiveDaysProgress,
+                    valueText: "\(viewModel.weeklyActiveDaysCount)/\(viewModel.weeklyGoal)",
+                    caption: "Days"
                 )
                 .frame(width: 110, height: 110)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Weekly completion")
-                        .font(.headline)
-                    Text("You’ve finished \(viewModel.weeklyCompletionCount) of \(viewModel.weeklyGoal) planned sessions in the last 7 days.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                ProgressRing(
+                    progress: viewModel.weeklyMinutesProgress,
+                    valueText: "\(viewModel.weeklyMinutesCompleted)",
+                    caption: "Minutes"
+                )
+                .frame(width: 110, height: 110)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Weekly progress")
+                    .font(.headline)
+                Text("Active days: \(viewModel.weeklyActiveDaysCount) of \(viewModel.weeklyGoal) planned days this week.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Workout time: \(viewModel.weeklyMinutesCompleted) of \(viewModel.weeklyMinutesGoal) minutes this week.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             LazyVGrid(columns: columns, spacing: 12) {

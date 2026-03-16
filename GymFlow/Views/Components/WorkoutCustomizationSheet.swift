@@ -56,6 +56,22 @@ struct WorkoutCustomizationSheet: View {
                     }
 
                     VStack(spacing: 12) {
+                        if let workoutDay, workoutDay.title != "Open Session", workoutDay.exercises.isEmpty == false {
+                            SecondaryButton(title: "Save Topic Default", systemImage: "square.and.arrow.down") {
+                                FeedbackEngine.success()
+                                store.saveWorkoutDayAsDefaultTemplate(on: date)
+                            }
+                        }
+
+                        if let workoutDay, store.hasDefaultWorkoutTemplate(for: workoutDay.title) {
+                            SecondaryButton(title: "Apply Saved Default", systemImage: "arrow.down.doc") {
+                                FeedbackEngine.impact()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    store.applyDefaultWorkoutTemplate(for: workoutDay.title, on: date)
+                                }
+                            }
+                        }
+
                         SecondaryButton(title: "Add Exercise", systemImage: "plus") {
                             isAddingExercise = true
                         }
@@ -147,7 +163,7 @@ struct WorkoutCustomizationSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(workoutDay.exercises.count) exercises • About \(workoutDay.estimatedMinutes) min")
+                Text("\(workoutDay.exercises.count) exercises")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.accent)
             }
@@ -263,40 +279,23 @@ struct SessionDetailsSheet: View {
     @State private var selectedTopic: String
     @State private var customTopic: String
     @State private var focusArea: String
-    @State private var estimatedMinutes: Int
-
-    private let topicOptions = [
-        "Push",
-        "Pull",
-        "Legs",
-        "Upper",
-        "Lower",
-        "Full Body",
-        "Conditioning",
-        "Recovery",
-        "Open Session",
-        "Custom"
-    ]
-
-    private let minuteOptions = Array(stride(from: 10, through: 120, by: 5))
+    @State private var saveTopicAsReusable = false
+    @State private var saveAsDefaultTemplate = false
 
     init(date: Date, workoutDay: WorkoutDay?) {
         self.date = date
         self.workoutDay = workoutDay
         let currentTitle = workoutDay?.title ?? "Open Session"
         let currentFocus = workoutDay?.focusArea ?? "Flexible session for today"
-        let currentMinutes = workoutDay?.estimatedMinutes ?? 35
-        let snappedMinutes = min(max(Int((Double(currentMinutes) / 5).rounded()) * 5, 10), 120)
         let usesCustomTopic = SessionDetailsSheet.defaultTopics.contains(currentTitle) == false
 
-        _selectedTopic = State(initialValue: usesCustomTopic ? "Custom" : currentTitle)
+        _selectedTopic = State(initialValue: usesCustomTopic ? Self.customTopicLabel : currentTitle)
         _customTopic = State(initialValue: usesCustomTopic ? currentTitle : "")
         _focusArea = State(initialValue: currentFocus)
-        _estimatedMinutes = State(initialValue: snappedMinutes)
     }
 
     private var resolvedTopic: String {
-        let topic = selectedTopic == "Custom" ? customTopic : selectedTopic
+        let topic = selectedTopic == Self.customTopicLabel ? customTopic : selectedTopic
         return topic.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -304,12 +303,28 @@ struct SessionDetailsSheet: View {
         workoutDay?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
-    private var resolvedMinutes: Int {
-        minuteOptions.contains(estimatedMinutes) ? estimatedMinutes : 35
+    private var topicOptions: [String] {
+        store.topicOptions() + [Self.customTopicLabel]
     }
 
     private var isValid: Bool {
         resolvedTopic.isEmpty == false
+    }
+
+    private var canSaveAsDefault: Bool {
+        resolvedTopic.isEmpty == false &&
+        resolvedTopic != "Open Session" &&
+        (workoutDay?.exercises.isEmpty == false) &&
+        shouldResetPlan == false
+    }
+
+    private var canApplySavedDefault: Bool {
+        store.hasDefaultWorkoutTemplate(for: resolvedTopic)
+    }
+
+    private var shouldResetPlan: Bool {
+        resolvedTopic != existingTopic &&
+        (resolvedTopic == "Open Session" || selectedTopic == Self.customTopicLabel)
     }
 
     var body: some View {
@@ -324,7 +339,7 @@ struct SessionDetailsSheet: View {
                     .pickerStyle(.wheel)
                     .frame(height: 110)
 
-                    if selectedTopic == "Custom" {
+                    if selectedTopic == Self.customTopicLabel {
                         TextField("Custom topic", text: $customTopic)
                     }
                 }
@@ -334,18 +349,24 @@ struct SessionDetailsSheet: View {
                         .lineLimit(2...4)
                 }
 
-                Section("Estimated time") {
-                    Picker("Minutes", selection: $estimatedMinutes) {
-                        ForEach(minuteOptions, id: \.self) { option in
-                            Text("\(option) min").tag(option)
+                Section("Reusable options") {
+                    if selectedTopic == Self.customTopicLabel || SessionDetailsSheet.defaultTopics.contains(resolvedTopic) == false {
+                        Toggle("Save this topic as a regular option", isOn: $saveTopicAsReusable)
+                    }
+
+                    Toggle("Save this session as the default for this topic", isOn: $saveAsDefaultTemplate)
+                        .disabled(canSaveAsDefault == false)
+
+                    if canApplySavedDefault {
+                        Button("Apply saved default session") {
+                            store.applyDefaultWorkoutTemplate(for: resolvedTopic, on: date)
+                            dismiss()
                         }
                     }
-                    .pickerStyle(.wheel)
-                    .frame(height: 110)
                 }
 
                 Section {
-                    Text("Use the topic however you want. It can match a classic split like Push or Legs, or it can just be your own label.")
+                    Text("Changing the topic to Open Session or entering a new custom topic clears the current exercise list so you can rebuild from scratch. Standard topic changes keep the exercises in place.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -365,9 +386,13 @@ struct SessionDetailsSheet: View {
                             on: date,
                             title: resolvedTopic,
                             focusArea: focusArea.trimmingCharacters(in: .whitespacesAndNewlines),
-                            estimatedMinutes: resolvedMinutes,
-                            resetPlan: resolvedTopic != existingTopic
+                            estimatedMinutes: workoutDay?.estimatedMinutes ?? 35,
+                            resetPlan: shouldResetPlan,
+                            saveTopicAsReusable: saveTopicAsReusable
                         )
+                        if saveAsDefaultTemplate && canSaveAsDefault {
+                            store.saveWorkoutDayAsDefaultTemplate(on: date, topic: resolvedTopic)
+                        }
                         dismiss()
                     }
                     .disabled(isValid == false)
@@ -387,6 +412,7 @@ struct SessionDetailsSheet: View {
         "Recovery",
         "Open Session"
     ]
+    private static let customTopicLabel = "Custom"
 }
 
 struct ExerciseEditorSheet: View {
