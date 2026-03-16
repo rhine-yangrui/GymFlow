@@ -313,6 +313,12 @@ struct SessionDetailsSheet: View {
         store.hasDefaultWorkoutTemplate(for: resolvedTopic)
     }
 
+    private var selectedTemplate: DefaultWorkoutTemplate? {
+        let topic = resolvedTopic
+        guard topic.isEmpty == false, topic != "Open Session" else { return nil }
+        return store.defaultWorkoutTemplate(for: topic)
+    }
+
     private var shouldResetPlan: Bool {
         resolvedTopic != existingTopic &&
         (resolvedTopic == "Open Session" || selectedTopic == Self.customTopicLabel)
@@ -338,6 +344,39 @@ struct SessionDetailsSheet: View {
                 Section("Focus") {
                     TextField("What is this session about?", text: $focusArea, axis: .vertical)
                         .lineLimit(2...4)
+                }
+
+                Section("Topic guide") {
+                    if resolvedTopic == "Open Session" {
+                        Text("Open Session clears the current exercise list so you can build a blank session from scratch.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else if let selectedTemplate, selectedTemplate.exercises.isEmpty == false {
+                        Text(selectedTemplate.focusArea)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        ForEach(Array(selectedTemplate.exercises.prefix(4))) { exercise in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(exercise.name)
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(exercise.targetSets) sets • \(exercise.targetReps) reps • \(exercise.suggestedWeight)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 2)
+                        }
+
+                        if selectedTemplate.exercises.count > 4 {
+                            Text("+ \(selectedTemplate.exercises.count - 4) more exercises in the default plan")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text("No saved default exists for this topic yet. You can still set the topic and build the session manually.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Reusable options") {
