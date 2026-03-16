@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct ExerciseCard: View {
-    @State private var isCustomBreakSheetPresented = false
-
     var exercise: Exercise
     var completedSets: Int
     var currentWeight: String
@@ -12,14 +10,10 @@ struct ExerciseCard: View {
     var phaseStartedAt: Date?
     var lastSetDuration: TimeInterval?
     var lastBreakDuration: TimeInterval?
-    var breakTargetSeconds: Int
     var onStartTraining: () -> Void
     var onFinishSet: () -> Void
-    var onBreakTargetSelected: (Int) -> Void
     var onEffortSelected: (Int) -> Void
     var onEdit: () -> Void
-
-    private let breakOptions = [60, 90, 120]
 
     private var isComplete: Bool {
         completedSets >= exercise.targetSets
@@ -38,10 +32,6 @@ struct ExerciseCard: View {
         case .ready, .breakTime:
             return "Start Set \(nextSetNumber) of \(exercise.targetSets)"
         }
-    }
-
-    private var usesCustomBreakTarget: Bool {
-        breakOptions.contains(breakTargetSeconds) == false
     }
 
     private var statusColor: Color {
@@ -114,12 +104,14 @@ struct ExerciseCard: View {
             .disabled(isComplete)
             .opacity(isComplete ? 0.45 : 1)
 
-            effortScale
+            if isComplete {
+                effortScale
 
-            if let lastFeedback {
-                Label("Last effort: \(lastFeedback.summary)", systemImage: "slider.horizontal.3")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let lastFeedback {
+                    Label("Last effort: \(lastFeedback.summary)", systemImage: "slider.horizontal.3")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(18)
@@ -131,11 +123,6 @@ struct ExerciseCard: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.06))
         )
-        .sheet(isPresented: $isCustomBreakSheetPresented) {
-            BreakTargetSheet(selectedSeconds: breakTargetSeconds) { seconds in
-                onBreakTargetSelected(seconds)
-            }
-        }
     }
 
     private var timingBlock: some View {
@@ -170,44 +157,6 @@ struct ExerciseCard: View {
                 summaryPill(title: "Last set", value: intervalLabel(lastSetDuration))
                 summaryPill(title: "Last break", value: intervalLabel(lastBreakDuration))
             }
-
-            if liveStatus != .completed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        ForEach(breakOptions, id: \.self) { option in
-                            Button {
-                                onBreakTargetSelected(option)
-                            } label: {
-                                Text("\(option)s")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(breakTargetSeconds == option ? .white : Color.primary)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(minHeight: 34)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                            .fill(breakTargetSeconds == option ? AppTheme.accent : Color.primary.opacity(0.06))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        Button {
-                            isCustomBreakSheetPresented = true
-                        } label: {
-                            Text(usesCustomBreakTarget ? "\(breakTargetSeconds)s" : "Custom")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(usesCustomBreakTarget ? .white : Color.primary)
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 34)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(usesCustomBreakTarget ? AppTheme.accent : Color.primary.opacity(0.06))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
         }
         .padding(16)
         .background(
@@ -231,7 +180,7 @@ struct ExerciseCard: View {
                 title: "Break timer",
                 subtitle: "Tap Start Set when you are ready to go again.",
                 tint: AppTheme.warning,
-                targetText: "Target \(intervalLabel(TimeInterval(breakTargetSeconds)))"
+                targetText: nil
             )
         case .completed:
             phaseSummary(
@@ -239,10 +188,7 @@ struct ExerciseCard: View {
                 subtitle: "All planned sets are logged for this movement."
             )
         case .ready:
-            phaseSummary(
-                title: "Ready for set \(nextSetNumber)",
-                subtitle: "Tap Start Set when you begin. Logging the set starts the break timer automatically."
-            )
+            EmptyView()
         }
     }
 
@@ -379,57 +325,5 @@ struct ExerciseCard: View {
         default:
             return AppTheme.accent
         }
-    }
-}
-
-private struct BreakTargetSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var selectedSeconds: Int
-
-    let onSave: (Int) -> Void
-
-    private let options = Array(stride(from: 30, through: 300, by: 15))
-
-    init(selectedSeconds: Int, onSave: @escaping (Int) -> Void) {
-        _selectedSeconds = State(initialValue: BreakTargetSheet.closestOption(to: selectedSeconds))
-        self.onSave = onSave
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Custom break target") {
-                    Picker("Seconds", selection: $selectedSeconds) {
-                        ForEach(options, id: \.self) { option in
-                            Text("\(option) sec").tag(option)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(height: 120)
-                }
-            }
-            .navigationTitle("Break Target")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        onSave(selectedSeconds)
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-
-    private static func closestOption(to seconds: Int) -> Int {
-        let options = Array(stride(from: 30, through: 300, by: 15))
-        return options.min(by: { abs($0 - seconds) < abs($1 - seconds) }) ?? 90
     }
 }

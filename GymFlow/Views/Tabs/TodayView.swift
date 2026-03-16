@@ -153,7 +153,6 @@ struct TodayView: View {
                         phaseStartedAt: state.phaseStartedAt,
                         lastSetDuration: state.lastSetDuration,
                         lastBreakDuration: state.lastBreakDuration,
-                        breakTargetSeconds: state.breakTargetSeconds,
                         onStartTraining: {
                             FeedbackEngine.impact()
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -165,9 +164,6 @@ struct TodayView: View {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 store.finishTrainingAndLogSet(for: exercise.id)
                             }
-                        },
-                        onBreakTargetSelected: { seconds in
-                            store.setBreakTarget(for: exercise.id, seconds: seconds)
                         },
                         onEffortSelected: { score in
                             FeedbackEngine.impact()
