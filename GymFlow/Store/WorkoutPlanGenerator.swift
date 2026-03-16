@@ -40,6 +40,14 @@ enum WorkoutPlanGenerator {
         )
     }
 
+    static func templateDay(for kind: WorkoutDayKind, profile: UserProfile, referenceDate: Date = .now) -> WorkoutDay {
+        makeWorkoutDay(
+            kind: kind,
+            weekday: calendar.component(.weekday, from: referenceDate),
+            profile: profile
+        )
+    }
+
     private static func scheduledOffsets(for sessions: Int) -> [Int] {
         switch sessions {
         case 2:

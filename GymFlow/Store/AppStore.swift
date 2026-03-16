@@ -669,11 +669,21 @@ final class AppStore: ObservableObject {
     }
 
     private func generatedWorkoutTemplate(for topicKey: String) -> DefaultWorkoutTemplate? {
-        guard let workoutDay = workoutPlan?.days.first(where: {
+        let workoutDay: WorkoutDay?
+
+        if let scheduledWorkoutDay = workoutPlan?.days.first(where: {
             normalizedTopicKey($0.title) == topicKey && $0.exercises.isEmpty == false
-        }) else {
-            return nil
+        }) {
+            workoutDay = scheduledWorkoutDay
+        } else if let profile = userProfile,
+                  let workoutKind = WorkoutDayKind.allCases.first(where: { normalizedTopicKey($0.rawValue) == topicKey }) {
+            let generatedDay = WorkoutPlanGenerator.templateDay(for: workoutKind, profile: profile)
+            workoutDay = generatedDay.exercises.isEmpty ? nil : generatedDay
+        } else {
+            workoutDay = nil
         }
+
+        guard let workoutDay else { return nil }
 
         return DefaultWorkoutTemplate(
             topicKey: topicKey,
