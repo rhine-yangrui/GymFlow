@@ -4,7 +4,6 @@ struct WorkoutCustomizationSheet: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.dismiss) private var dismiss
     @State private var editingExercise: Exercise?
-    @State private var swapExercise: Exercise?
     @State private var isAddingExercise = false
     @State private var isEditingSessionDetails = false
     @State private var exercisePendingDeletion: Exercise?
@@ -109,10 +108,6 @@ struct WorkoutCustomizationSheet: View {
             }
             .sheet(isPresented: $isEditingSessionDetails) {
                 SessionDetailsSheet(date: date, workoutDay: workoutDay)
-                    .environmentObject(store)
-            }
-            .sheet(item: $swapExercise) { exercise in
-                ExerciseSwapOptionsSheet(date: date, exercise: exercise)
                     .environmentObject(store)
             }
             .sheet(isPresented: $isAddingExercise) {
@@ -231,10 +226,6 @@ struct WorkoutCustomizationSheet: View {
             HStack(spacing: 10) {
                 actionChip(title: "Edit", systemImage: "slider.horizontal.3") {
                     editingExercise = exercise
-                }
-
-                actionChip(title: "Swap", systemImage: "arrow.triangle.2.circlepath") {
-                    swapExercise = exercise
                 }
 
                 actionChip(title: "Remove", systemImage: "trash") {
@@ -680,51 +671,6 @@ struct ExerciseEditorSheet: View {
             return (.pounds, rounded)
         case .kilograms:
             return (.kilograms, min(max(rawAmount, 1), 200))
-        }
-    }
-}
-
-private struct ExerciseSwapOptionsSheet: View {
-    @EnvironmentObject private var store: AppStore
-    @Environment(\.dismiss) private var dismiss
-
-    let date: Date
-    let exercise: Exercise
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Substitute options") {
-                    ForEach(exercise.alternatives.prefix(3)) { option in
-                        Button {
-                            FeedbackEngine.impact()
-                            store.swapExercise(on: date, exerciseID: exercise.id, with: option)
-                            dismiss()
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(option.name)
-                                    .font(.headline)
-                                Text("\(option.targetReps) reps • \(option.suggestedWeight)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text(option.hint)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 6)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Swap Exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
-            }
         }
     }
 }

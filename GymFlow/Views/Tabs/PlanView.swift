@@ -63,10 +63,6 @@ struct PlanView: View {
             SecondaryButton(title: "Adjust My Plan", systemImage: "slider.horizontal.3") {
                 isAdjustSheetPresented = true
             }
-
-            SecondaryButton(title: "Swap Exercise", systemImage: "arrow.triangle.2.circlepath") {
-                selectedDay = viewModel.scheduledDays.first(where: { $0.workoutDay.exercises.isEmpty == false }) ?? viewModel.scheduledDays.first
-            }
         }
     }
 
