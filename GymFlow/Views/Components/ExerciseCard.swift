@@ -20,7 +20,6 @@ struct ExerciseCard: View {
     var onEdit: () -> Void
 
     private let breakOptions = [60, 90, 120]
-    private let effortColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
 
     private var isComplete: Bool {
         completedSets >= exercise.targetSets
@@ -174,10 +173,6 @@ struct ExerciseCard: View {
 
             if liveStatus != .completed {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Break target")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
                     HStack(spacing: 8) {
                         ForEach(breakOptions, id: \.self) { option in
                             Button {
@@ -227,14 +222,14 @@ struct ExerciseCard: View {
         case .training:
             phaseCard(
                 title: "Training timer",
-                subtitle: "Log the set when you finish. The break timer starts automatically after that.",
+                subtitle: "Log the set when you finish.",
                 tint: AppTheme.accentWarm,
                 targetText: nil
             )
         case .breakTime:
             phaseCard(
                 title: "Break timer",
-                subtitle: "The break started after your last logged set. Tap Start Set when you are ready to go again.",
+                subtitle: "Tap Start Set when you are ready to go again.",
                 tint: AppTheme.warning,
                 targetText: "Target \(intervalLabel(TimeInterval(breakTargetSeconds)))"
             )
@@ -337,26 +332,35 @@ struct ExerciseCard: View {
 
     private var effortScale: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Effort scale")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Effort")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
 
-            LazyVGrid(columns: effortColumns, spacing: 8) {
-                ForEach(1...10, id: \.self) { score in
-                    Button {
-                        onEffortSelected(score)
-                    } label: {
-                        Text("\(score)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(lastFeedback?.score == score ? .white : Color.primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 40)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(lastFeedback?.score == score ? effortColor(for: score) : Color.primary.opacity(0.06))
-                            )
+                Spacer()
+
+                Text("1 hard • 10 easy")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(1...10, id: \.self) { score in
+                        Button {
+                            onEffortSelected(score)
+                        } label: {
+                            Text("\(score)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(lastFeedback?.score == score ? .white : Color.primary)
+                                .frame(width: 42, height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(lastFeedback?.score == score ? effortColor(for: score) : Color.primary.opacity(0.06))
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
 

@@ -315,6 +315,11 @@ final class AppStore: ObservableObject {
             activeWorkout.exerciseStates[index].phaseStartedAt = nil
             activeWorkout.exerciseStates[index].liveStatus = .completed
             activeWorkout.exerciseStates[index].adjustmentNote = "Exercise complete. Move on when you are ready."
+            if let nextIndex = nextUnfinishedExerciseIndex(in: activeWorkout.exerciseStates, after: index) {
+                activeWorkout.exerciseStates[nextIndex].phaseStartedAt = date
+                activeWorkout.exerciseStates[nextIndex].liveStatus = .breakTime
+                activeWorkout.exerciseStates[nextIndex].adjustmentNote = "Next exercise ready."
+            }
         } else {
             activeWorkout.exerciseStates[index].phaseStartedAt = date
             activeWorkout.exerciseStates[index].liveStatus = .breakTime
@@ -744,6 +749,21 @@ final class AppStore: ObservableObject {
             activeWorkout.exerciseStates[index].phaseStartedAt = nil
             activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
         }
+    }
+
+    private func nextUnfinishedExerciseIndex(
+        in exerciseStates: [ActiveWorkoutExerciseState],
+        after currentIndex: Int
+    ) -> Int? {
+        guard currentIndex < exerciseStates.endIndex else { return nil }
+
+        for index in exerciseStates.index(after: currentIndex)..<exerciseStates.endIndex {
+            if exerciseStates[index].completedSets < exerciseStates[index].targetSets {
+                return index
+            }
+        }
+
+        return nil
     }
 
     private func weekDates(containing referenceDate: Date) -> [Date] {
