@@ -6,6 +6,7 @@ struct WorkoutCustomizationSheet: View {
     @State private var editingExercise: Exercise?
     @State private var swapExercise: Exercise?
     @State private var isAddingExercise = false
+    @State private var isEditingSessionDetails = false
     @State private var exercisePendingDeletion: Exercise?
 
     let date: Date
@@ -37,11 +38,9 @@ struct WorkoutCustomizationSheet: View {
                     if let workoutDay {
                         if workoutDay.exercises.isEmpty {
                             EmptyStateView(
-                                title: workoutDay.isRecovery ? "Build a custom session for today" : "No exercises added yet",
-                                message: workoutDay.isRecovery
-                                    ? "You can turn a recovery day into a flexible workout by adding your own movements."
-                                    : "Add exercises, then tune the sets, reps, and weight targets before you start.",
-                                icon: workoutDay.isRecovery ? "plus.circle" : "list.bullet.clipboard"
+                                title: "No exercises added yet",
+                                message: "Set the day topic however you want, then add exercises and tune the sets, reps, and weight targets before you start.",
+                                icon: "list.bullet.clipboard"
                             )
                         } else {
                             ForEach(workoutDay.exercises) { exercise in
@@ -92,6 +91,10 @@ struct WorkoutCustomizationSheet: View {
                 ExerciseEditorSheet(date: date, existingExercise: exercise)
                     .environmentObject(store)
             }
+            .sheet(isPresented: $isEditingSessionDetails) {
+                SessionDetailsSheet(date: date, workoutDay: workoutDay)
+                    .environmentObject(store)
+            }
             .sheet(item: $swapExercise) { exercise in
                 ExerciseSwapOptionsSheet(date: date, exercise: exercise)
                     .environmentObject(store)
@@ -134,17 +137,6 @@ struct WorkoutCustomizationSheet: View {
                     .foregroundStyle(.secondary)
 
                 Spacer()
-
-                if isCustomized {
-                    Text("Customized")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(AppTheme.accent.opacity(0.14))
-                        )
-                }
             }
 
             if let workoutDay {
@@ -157,6 +149,21 @@ struct WorkoutCustomizationSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.accent)
             }
+
+            Button {
+                isEditingSessionDetails = true
+            } label: {
+                Label("Edit Session Details", systemImage: "square.and.pencil")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.primary.opacity(0.06))
+                    )
+            }
+            .buttonStyle(.plain)
 
             if isToday, store.activeWorkoutForToday() != nil {
                 Label("Edits sync into the active workout right away.", systemImage: "arrow.triangle.2.circlepath")
@@ -242,6 +249,137 @@ struct WorkoutCustomizationSheet: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+struct SessionDetailsSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+
+    let date: Date
+    let workoutDay: WorkoutDay?
+
+    @State private var selectedTopic: String
+    @State private var customTopic: String
+    @State private var focusArea: String
+    @State private var estimatedMinutes: Int
+
+    private let topicOptions = [
+        "Push",
+        "Pull",
+        "Legs",
+        "Upper",
+        "Lower",
+        "Full Body",
+        "Conditioning",
+        "Recovery",
+        "Open Session",
+        "Custom"
+    ]
+
+    private let minuteOptions = Array(stride(from: 10, through: 120, by: 5))
+
+    init(date: Date, workoutDay: WorkoutDay?) {
+        self.date = date
+        self.workoutDay = workoutDay
+        let currentTitle = workoutDay?.title ?? "Open Session"
+        let currentFocus = workoutDay?.focusArea ?? "Flexible session for today"
+        let currentMinutes = workoutDay?.estimatedMinutes ?? 35
+        let snappedMinutes = min(max(Int((Double(currentMinutes) / 5).rounded()) * 5, 10), 120)
+        let usesCustomTopic = SessionDetailsSheet.defaultTopics.contains(currentTitle) == false
+
+        _selectedTopic = State(initialValue: usesCustomTopic ? "Custom" : currentTitle)
+        _customTopic = State(initialValue: usesCustomTopic ? currentTitle : "")
+        _focusArea = State(initialValue: currentFocus)
+        _estimatedMinutes = State(initialValue: snappedMinutes)
+    }
+
+    private var resolvedTopic: String {
+        let topic = selectedTopic == "Custom" ? customTopic : selectedTopic
+        return topic.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var resolvedMinutes: Int {
+        minuteOptions.contains(estimatedMinutes) ? estimatedMinutes : 35
+    }
+
+    private var isValid: Bool {
+        resolvedTopic.isEmpty == false
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Session topic") {
+                    Picker("Topic", selection: $selectedTopic) {
+                        ForEach(topicOptions, id: \.self) { option in
+                            Text(option).tag(option)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 110)
+
+                    if selectedTopic == "Custom" {
+                        TextField("Custom topic", text: $customTopic)
+                    }
+                }
+
+                Section("Focus") {
+                    TextField("What is this session about?", text: $focusArea, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+
+                Section("Estimated time") {
+                    Picker("Minutes", selection: $estimatedMinutes) {
+                        ForEach(minuteOptions, id: \.self) { option in
+                            Text("\(option) min").tag(option)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 110)
+                }
+
+                Section {
+                    Text("Use the topic however you want. It can match a classic split like Push or Legs, or it can just be your own label.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Edit Session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        store.updateWorkoutDayDetails(
+                            on: date,
+                            title: resolvedTopic,
+                            focusArea: focusArea.trimmingCharacters(in: .whitespacesAndNewlines),
+                            estimatedMinutes: resolvedMinutes
+                        )
+                        dismiss()
+                    }
+                    .disabled(isValid == false)
+                }
+            }
+        }
+    }
+
+    private static let defaultTopics = [
+        "Push",
+        "Pull",
+        "Legs",
+        "Upper",
+        "Lower",
+        "Full Body",
+        "Conditioning",
+        "Recovery",
+        "Open Session"
+    ]
 }
 
 struct ExerciseEditorSheet: View {

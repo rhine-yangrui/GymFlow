@@ -65,7 +65,7 @@ struct PlanView: View {
             }
 
             SecondaryButton(title: "Swap Exercise", systemImage: "arrow.triangle.2.circlepath") {
-                selectedDay = viewModel.scheduledDays.first(where: { $0.workoutDay.isRecovery == false })
+                selectedDay = viewModel.scheduledDays.first(where: { $0.workoutDay.exercises.isEmpty == false }) ?? viewModel.scheduledDays.first
             }
         }
     }
@@ -97,15 +97,6 @@ struct PlanView: View {
                                 Capsule(style: .continuous)
                                     .fill(Color.white.opacity(0.24))
                             )
-                    } else if day.isCustomized {
-                        Text("Custom")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(AppTheme.accent.opacity(0.16))
-                            )
                     }
                 }
 
@@ -114,7 +105,7 @@ struct PlanView: View {
                 Text(day.workoutDay.focusArea)
                     .font(.subheadline)
                     .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.86) : .secondary)
-                Text(day.workoutDay.isRecovery ? "20 min" : "\(day.workoutDay.estimatedMinutes) min • \(day.workoutDay.exercises.count) exercises")
+                Text(day.workoutDay.exercises.isEmpty ? "Open day • \(day.workoutDay.estimatedMinutes) min" : "\(day.workoutDay.estimatedMinutes) min • \(day.workoutDay.exercises.count) exercises")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.9) : .secondary)
             }

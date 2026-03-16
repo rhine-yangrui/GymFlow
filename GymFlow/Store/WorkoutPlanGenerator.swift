@@ -99,6 +99,8 @@ enum WorkoutPlanGenerator {
 
     private static func focusArea(for kind: WorkoutDayKind, goal: FitnessGoal) -> String {
         switch kind {
+        case .custom:
+            return "Flexible session you can shape any way you want"
         case .push:
             return goal == .chestFocus ? "Pressing strength and chest volume" : "Chest, shoulders, and triceps"
         case .pull:
@@ -181,7 +183,7 @@ enum WorkoutPlanGenerator {
                 exercise("Leg Curl", sets: 2, reps: "12-15", weight: suggestedWeight(light: 35, medium: 55, profile: profile), hint: "Control both directions."),
                 exercise("Standing Calf Raise", sets: 2, reps: "12-15", weight: suggestedWeight(light: 40, medium: 70, profile: profile), hint: "Pause at the top for one beat.")
             ]
-        case .fullBody:
+        case .fullBody, .custom:
             return [
                 exercise("Goblet Squat", sets: 3, reps: "8-10", weight: suggestedWeight(light: 20, medium: 40, profile: profile), hint: "Sit between the hips, not forward."),
                 exercise("Dumbbell Bench Press", sets: 3, reps: "8-10", weight: suggestedWeight(light: 20, medium: 40, profile: profile), hint: "Own the bottom position."),
@@ -252,7 +254,7 @@ enum WorkoutPlanGenerator {
                 exercise("Glute Bridge", sets: 2, reps: "12-15", weight: "Bodyweight", hint: "Hold the top for a beat."),
                 exercise("Calf Raise", sets: 2, reps: "15-20", weight: "Bodyweight", hint: "Pause at the top.")
             ]
-        case .fullBody, .upper:
+        case .fullBody, .upper, .custom:
             return [
                 exercise("Backpack Squat", sets: 3, reps: "10-12", weight: suggestedWeight(light: 20, medium: 35, profile: profile), hint: "Keep knees tracking over feet."),
                 exercise("Push-Up", sets: 3, reps: "8-12", weight: "Bodyweight", hint: "Use an incline to keep reps clean."),

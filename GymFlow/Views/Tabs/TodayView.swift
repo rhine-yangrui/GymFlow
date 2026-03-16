@@ -3,6 +3,7 @@ import SwiftUI
 struct TodayView: View {
     @EnvironmentObject private var store: AppStore
     @State private var editingExercise: Exercise?
+    @State private var isEditingSessionDetails = false
     @State private var isAddingExercise = false
 
     private var viewModel: TodayViewModel {
@@ -26,6 +27,10 @@ struct TodayView: View {
             ExerciseEditorSheet(date: .now, existingExercise: exercise)
                 .environmentObject(store)
         }
+        .sheet(isPresented: $isEditingSessionDetails) {
+            SessionDetailsSheet(date: .now, workoutDay: viewModel.todayPlan)
+                .environmentObject(store)
+        }
         .sheet(isPresented: $isAddingExercise) {
             ExerciseEditorSheet(date: .now, existingExercise: nil)
                 .environmentObject(store)
@@ -40,17 +45,6 @@ struct TodayView: View {
                     .foregroundStyle(.white.opacity(0.85))
 
                 Spacer()
-
-                if viewModel.isCustomizedToday {
-                    Text("Customized")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(Color.white.opacity(0.18))
-                        )
-                }
             }
 
             Text("What should you do today?")
@@ -122,6 +116,10 @@ struct TodayView: View {
                 ForEach(day.exercises) { exercise in
                     exercisePreviewRow(exercise)
                 }
+            }
+
+            SecondaryButton(title: "Edit Session Details", systemImage: "square.and.pencil") {
+                isEditingSessionDetails = true
             }
 
             SecondaryButton(title: "Add Exercise", systemImage: "plus") {
@@ -202,6 +200,10 @@ struct TodayView: View {
                 }
             }
 
+            SecondaryButton(title: "Edit Session Details", systemImage: "square.and.pencil") {
+                isEditingSessionDetails = true
+            }
+
             SecondaryButton(title: "Add Exercise", systemImage: "plus") {
                 isAddingExercise = true
             }
@@ -280,6 +282,10 @@ struct TodayView: View {
                 message: "A lighter day can support long-term consistency. If you want to train anyway, add exercises for today and make it your own.",
                 icon: "figure.cooldown"
             )
+
+            SecondaryButton(title: "Edit Session Details", systemImage: "square.and.pencil") {
+                isEditingSessionDetails = true
+            }
 
             SecondaryButton(title: "Add Exercise", systemImage: "plus") {
                 isAddingExercise = true

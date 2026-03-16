@@ -1,6 +1,7 @@
 import Foundation
 
 enum WorkoutDayKind: String, CaseIterable, Codable, Identifiable {
+    case custom = "Custom"
     case push = "Push"
     case pull = "Pull"
     case legs = "Legs"
@@ -15,6 +16,8 @@ enum WorkoutDayKind: String, CaseIterable, Codable, Identifiable {
 
     var icon: String {
         switch self {
+        case .custom:
+            return "dumbbell.fill"
         case .push:
             return "arrow.up.right.circle.fill"
         case .pull:

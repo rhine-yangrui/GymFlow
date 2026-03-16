@@ -34,10 +34,6 @@ struct TodayViewModel {
         store.workoutDay(for: .now)
     }
 
-    var isCustomizedToday: Bool {
-        store.isCustomizedWorkout(on: .now)
-    }
-
     var progress: Double {
         guard let activeWorkout, activeWorkout.totalSetCount > 0 else { return 0 }
         return Double(activeWorkout.completedSetCount) / Double(activeWorkout.totalSetCount)
@@ -72,12 +68,11 @@ struct TodayViewModel {
             ? ""
             : " \(completedSessionsToday.count) session\(completedSessionsToday.count == 1 ? "" : "s") logged today."
 
-        if todayPlan.isRecovery {
-            return "Today is lighter on purpose. Recovery still counts.\(sessionSummary)"
+        if todayPlan.isRecovery && todayPlan.exercises.isEmpty {
+            return "The day is open. Recover, or build a session when you want.\(sessionSummary)"
         }
 
-        let prefix = isCustomizedToday ? "Customized for today. " : ""
-        return "\(prefix)\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min.\(sessionSummary)"
+        return "\(todayPlan.focusArea) in about \(todayPlan.estimatedMinutes) min.\(sessionSummary)"
     }
 
     func state(for exercise: Exercise) -> ActiveWorkoutExerciseState? {

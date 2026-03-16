@@ -138,7 +138,7 @@ final class AppStore: ObservableObject {
 
     func startWorkout(on date: Date = .now) {
         guard activeWorkoutForToday(referenceDate: date) == nil else { return }
-        guard let workoutDay = workoutDay(for: date), workoutDay.isRecovery == false else { return }
+        guard let workoutDay = workoutDay(for: date) else { return }
         guard workoutDay.exercises.isEmpty == false else { return }
 
         activeWorkout = ActiveWorkout(
@@ -325,13 +325,6 @@ final class AppStore: ObservableObject {
     ) {
         guard var workoutDay = editableWorkoutDay(for: date) else { return }
 
-        if workoutDay.isRecovery {
-            workoutDay.kind = .fullBody
-            workoutDay.title = "Custom Workout"
-            workoutDay.focusArea = "Flexible exercise mix for today"
-            workoutDay.estimatedMinutes = 35
-        }
-
         workoutDay.exercises.append(
             Exercise(
                 name: name,
@@ -341,6 +334,25 @@ final class AppStore: ObservableObject {
                 hint: hint,
                 alternatives: genericAlternatives(for: name, reps: reps, weight: weight)
             )
+        )
+
+        saveCustomizedWorkoutDay(workoutDay, for: date)
+    }
+
+    func updateWorkoutDayDetails(
+        on date: Date,
+        title: String,
+        focusArea: String,
+        estimatedMinutes: Int
+    ) {
+        guard var workoutDay = editableWorkoutDay(for: date) else { return }
+
+        workoutDay.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        workoutDay.focusArea = focusArea.trimmingCharacters(in: .whitespacesAndNewlines)
+        workoutDay.estimatedMinutes = max(estimatedMinutes, 10)
+        workoutDay.kind = resolvedWorkoutKind(
+            from: workoutDay.title,
+            existingKind: workoutDay.kind
         )
 
         saveCustomizedWorkoutDay(workoutDay, for: date)
@@ -485,34 +497,48 @@ final class AppStore: ObservableObject {
         var workoutDay = workoutDay
         workoutDay.weekday = calendar.component(.weekday, from: date)
 
-        if workoutDay.exercises.isEmpty {
-            if baseWorkoutDay(for: date)?.isRecovery == true {
-                workoutDay.kind = .recovery
-                workoutDay.title = "Recovery"
-                workoutDay.focusArea = "Mobility, walking, light stretching"
-                workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 20)
-            } else {
-                workoutDay.title = workoutDay.title.isEmpty ? "Custom Workout" : workoutDay.title
-                workoutDay.focusArea = workoutDay.focusArea.isEmpty ? "Flexible exercise mix for today" : workoutDay.focusArea
-                workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 20)
-            }
-        } else {
-            if workoutDay.kind == .recovery {
-                workoutDay.kind = .fullBody
-            }
+        if workoutDay.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            workoutDay.title = workoutDay.exercises.isEmpty ? "Open Day" : "Open Session"
+        }
 
+        if workoutDay.focusArea.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            workoutDay.focusArea = workoutDay.exercises.isEmpty
+                ? "Leave the day open or add a session when you want."
+                : "Flexible session for today"
+        }
+
+        if workoutDay.exercises.isEmpty {
+            workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 20)
+        } else {
             if workoutDay.title == "Recovery" {
-                workoutDay.title = "Custom Workout"
+                workoutDay.title = "Open Session"
             }
 
             if workoutDay.focusArea == "Mobility, walking, light stretching" {
-                workoutDay.focusArea = "Flexible exercise mix for today"
+                workoutDay.focusArea = "Flexible session for today"
             }
 
             workoutDay.estimatedMinutes = max(workoutDay.estimatedMinutes, 12 + (workoutDay.exercises.count * 7))
         }
 
+        workoutDay.kind = resolvedWorkoutKind(
+            from: workoutDay.title,
+            existingKind: workoutDay.kind
+        )
+
         return workoutDay
+    }
+
+    private func resolvedWorkoutKind(from title: String, existingKind: WorkoutDayKind) -> WorkoutDayKind {
+        let normalizedTitle = title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard normalizedTitle.isEmpty == false else {
+            return existingKind
+        }
+
+        return WorkoutDayKind.allCases.first(where: { $0.rawValue.lowercased() == normalizedTitle }) ?? .custom
     }
 
     private func synchronizeActiveWorkoutIfNeeded(for date: Date, with workoutDay: WorkoutDay) {
