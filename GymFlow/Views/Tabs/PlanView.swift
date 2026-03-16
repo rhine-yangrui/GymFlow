@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PlanView: View {
     @EnvironmentObject private var store: AppStore
-    @State private var selectedDay: WorkoutDay?
+    @State private var selectedDay: ScheduledWorkoutDay?
     @State private var isAdjustSheetPresented = false
 
     private var viewModel: PlanViewModel {
@@ -14,9 +14,9 @@ struct PlanView: View {
             VStack(alignment: .leading, spacing: 20) {
                 headerCard
                 actionButtons
-                SectionHeader(title: "Weekly plan", subtitle: "Tap any day to review the workout and swap exercises.")
+                SectionHeader(title: "Weekly plan", subtitle: "Tap any day to review it, then add, edit, swap, or remove exercises.")
 
-                ForEach(viewModel.orderedDays) { day in
+                ForEach(viewModel.scheduledDays) { day in
                     Button {
                         selectedDay = day
                     } label: {
@@ -30,7 +30,7 @@ struct PlanView: View {
         }
         .background(AppTheme.shell.ignoresSafeArea())
         .sheet(item: $selectedDay) { day in
-            DayDetailSheet(day: day)
+            WorkoutCustomizationSheet(date: day.date)
                 .environmentObject(store)
         }
         .sheet(isPresented: $isAdjustSheetPresented) {
@@ -65,14 +65,14 @@ struct PlanView: View {
             }
 
             SecondaryButton(title: "Swap Exercise", systemImage: "arrow.triangle.2.circlepath") {
-                selectedDay = viewModel.orderedDays.first(where: { $0.isRecovery == false })
+                selectedDay = viewModel.scheduledDays.first(where: { $0.workoutDay.isRecovery == false })
             }
         }
     }
 
-    private func dayCard(_ day: WorkoutDay) -> some View {
+    private func dayCard(_ day: ScheduledWorkoutDay) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: day.kind.icon)
+            Image(systemName: day.workoutDay.kind.icon)
                 .font(.title3)
                 .foregroundStyle(viewModel.isToday(day) ? .white : AppTheme.accent)
                 .frame(width: 46, height: 46)
@@ -85,6 +85,9 @@ struct PlanView: View {
                 HStack {
                     Text(viewModel.weekdayLabel(for: day))
                         .font(.headline)
+                    Text(viewModel.dateLabel(for: day))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.82) : .secondary)
                     if viewModel.isToday(day) {
                         Text("Today")
                             .font(.caption.weight(.semibold))
@@ -94,15 +97,24 @@ struct PlanView: View {
                                 Capsule(style: .continuous)
                                     .fill(Color.white.opacity(0.24))
                             )
+                    } else if day.isCustomized {
+                        Text("Custom")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(AppTheme.accent.opacity(0.16))
+                            )
                     }
                 }
 
-                Text(day.title)
+                Text(day.workoutDay.title)
                     .font(.title3.bold())
-                Text(day.focusArea)
+                Text(day.workoutDay.focusArea)
                     .font(.subheadline)
                     .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.86) : .secondary)
-                Text(day.isRecovery ? "20 min" : "\(day.estimatedMinutes) min • \(day.exercises.count) exercises")
+                Text(day.workoutDay.isRecovery ? "20 min" : "\(day.workoutDay.estimatedMinutes) min • \(day.workoutDay.exercises.count) exercises")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.9) : .secondary)
             }
@@ -118,136 +130,6 @@ struct PlanView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(viewModel.isToday(day) ? AnyShapeStyle(AppTheme.heroGradient) : AnyShapeStyle(AppTheme.card))
         )
-    }
-}
-
-private struct DayDetailSheet: View {
-    @EnvironmentObject private var store: AppStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedExercise: Exercise?
-
-    let day: WorkoutDay
-
-    private var refreshedDay: WorkoutDay {
-        store.workoutPlan?.days.first(where: { $0.id == day.id }) ?? day
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(refreshedDay.title)
-                            .font(.largeTitle.bold())
-                        Text(refreshedDay.focusArea)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if refreshedDay.isRecovery {
-                        EmptyStateView(
-                            title: "Recovery block",
-                            message: "Keep movement easy today. A walk, mobility circuit, or extra sleep all count.",
-                            icon: "figure.cooldown"
-                        )
-                    } else {
-                        ForEach(refreshedDay.exercises) { exercise in
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .top) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text(exercise.name)
-                                            .font(.headline)
-                                        Text("\(exercise.targetSets) sets • \(exercise.targetReps) reps")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                        Text(exercise.hint)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-
-                                    Spacer()
-
-                                    Button("Swap Exercise") {
-                                        selectedExercise = exercise
-                                    }
-                                    .font(.subheadline.weight(.semibold))
-                                }
-
-                                Text("Suggested weight: \(exercise.suggestedWeight)")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.accent)
-                            }
-                            .padding(18)
-                            .background(
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(AppTheme.card)
-                            )
-                        }
-                    }
-                }
-                .padding(20)
-                .padding(.bottom, 24)
-            }
-            .background(AppTheme.shell.ignoresSafeArea())
-            .navigationTitle("Day Detail")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-            .sheet(item: $selectedExercise) { exercise in
-                SwapExerciseSheet(dayID: refreshedDay.id, exercise: exercise)
-                    .environmentObject(store)
-            }
-        }
-    }
-}
-
-private struct SwapExerciseSheet: View {
-    @EnvironmentObject private var store: AppStore
-    @Environment(\.dismiss) private var dismiss
-
-    let dayID: UUID
-    let exercise: Exercise
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Substitute options") {
-                    ForEach(exercise.alternatives.prefix(3)) { option in
-                        Button {
-                            FeedbackEngine.impact()
-                            store.swapExercise(dayID: dayID, exerciseID: exercise.id, with: option)
-                            dismiss()
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(option.name)
-                                    .font(.headline)
-                                Text("\(option.targetReps) reps • \(option.suggestedWeight)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text(option.hint)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 6)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Swap Exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
 

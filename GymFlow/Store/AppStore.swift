@@ -165,6 +165,9 @@ final class AppStore: ObservableObject {
         guard activeWorkout.exerciseStates[index].completedSets < activeWorkout.exerciseStates[index].targetSets else { return }
 
         activeWorkout.exerciseStates[index].completedSets += 1
+        activeWorkout.exerciseStates[index].phaseStartedAt = nil
+        activeWorkout.exerciseStates[index].lastSetDuration = nil
+        activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
         activeWorkout.exerciseStates[index].adjustmentNote = "Set logged. Stay smooth on the next one."
 
         let exerciseState = activeWorkout.exerciseStates[index]
@@ -180,11 +183,98 @@ final class AppStore: ObservableObject {
                 completedAt: date,
                 reps: exerciseState.targetRepCount,
                 weight: exerciseState.currentWeight,
+                setDuration: nil,
                 intervalSincePreviousSet: intervalSincePreviousSet,
                 feedback: exerciseState.lastFeedback
             )
         )
 
+        self.activeWorkout = activeWorkout
+    }
+
+    func startTraining(for exerciseID: UUID, at date: Date = .now) {
+        guard var activeWorkout = activeWorkoutForToday(referenceDate: date) else { return }
+        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
+        guard activeWorkout.exerciseStates[index].completedSets < activeWorkout.exerciseStates[index].targetSets else { return }
+
+        clearOtherActivePhases(in: &activeWorkout, excluding: exerciseID)
+        if activeWorkout.exerciseStates[index].liveStatus == .breakTime,
+           let phaseStartedAt = activeWorkout.exerciseStates[index].phaseStartedAt {
+            activeWorkout.exerciseStates[index].lastBreakDuration = date.timeIntervalSince(phaseStartedAt)
+        }
+        activeWorkout.exerciseStates[index].liveStatus = .training
+        activeWorkout.exerciseStates[index].phaseStartedAt = date
+        activeWorkout.exerciseStates[index].adjustmentNote = "Training in progress."
+        self.activeWorkout = activeWorkout
+    }
+
+    func finishTrainingAndLogSet(for exerciseID: UUID, at date: Date = .now) {
+        guard var activeWorkout = activeWorkoutForToday(referenceDate: date) else { return }
+        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
+        guard activeWorkout.exerciseStates[index].liveStatus == .training else { return }
+        guard activeWorkout.exerciseStates[index].completedSets < activeWorkout.exerciseStates[index].targetSets else { return }
+
+        let setDuration = activeWorkout.exerciseStates[index].phaseStartedAt.map { date.timeIntervalSince($0) }
+        activeWorkout.exerciseStates[index].completedSets += 1
+        activeWorkout.exerciseStates[index].phaseStartedAt = nil
+        activeWorkout.exerciseStates[index].lastSetDuration = setDuration
+        activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
+        activeWorkout.exerciseStates[index].adjustmentNote = activeWorkout.exerciseStates[index].liveStatus == .completed
+            ? "Exercise complete. Move on when you are ready."
+            : "Set finished. Start a break or move into the next set."
+
+        let exerciseState = activeWorkout.exerciseStates[index]
+        let intervalSincePreviousSet = activeWorkout.loggedSets
+            .map(\.completedAt)
+            .max()
+            .map { date.timeIntervalSince($0) }
+
+        activeWorkout.loggedSets.append(
+            LoggedSet(
+                exerciseID: exerciseState.id,
+                exerciseName: exerciseState.exerciseName,
+                completedAt: date,
+                reps: exerciseState.targetRepCount,
+                weight: exerciseState.currentWeight,
+                setDuration: setDuration,
+                intervalSincePreviousSet: intervalSincePreviousSet,
+                feedback: exerciseState.lastFeedback
+            )
+        )
+
+        self.activeWorkout = activeWorkout
+    }
+
+    func startBreak(for exerciseID: UUID, at date: Date = .now) {
+        guard var activeWorkout = activeWorkoutForToday(referenceDate: date) else { return }
+        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
+
+        clearOtherActivePhases(in: &activeWorkout, excluding: exerciseID)
+        activeWorkout.exerciseStates[index].liveStatus = .breakTime
+        activeWorkout.exerciseStates[index].phaseStartedAt = date
+        activeWorkout.exerciseStates[index].adjustmentNote = "Break running. Start the next set when you feel ready."
+        self.activeWorkout = activeWorkout
+    }
+
+    func endBreak(for exerciseID: UUID, at date: Date = .now) {
+        guard var activeWorkout = activeWorkoutForToday(referenceDate: date) else { return }
+        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
+        guard activeWorkout.exerciseStates[index].liveStatus == .breakTime else { return }
+
+        activeWorkout.exerciseStates[index].lastBreakDuration = activeWorkout.exerciseStates[index].phaseStartedAt.map { date.timeIntervalSince($0) }
+        activeWorkout.exerciseStates[index].phaseStartedAt = nil
+        activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
+        activeWorkout.exerciseStates[index].adjustmentNote = activeWorkout.exerciseStates[index].liveStatus == .completed
+            ? "Exercise complete."
+            : "Break finished. Ready for the next set."
+        self.activeWorkout = activeWorkout
+    }
+
+    func setBreakTarget(for exerciseID: UUID, seconds: Int) {
+        guard var activeWorkout = activeWorkoutForToday() else { return }
+        guard let index = activeWorkout.exerciseStates.firstIndex(where: { $0.id == exerciseID }) else { return }
+
+        activeWorkout.exerciseStates[index].breakTargetSeconds = seconds
         self.activeWorkout = activeWorkout
     }
 
@@ -435,6 +525,8 @@ final class AppStore: ObservableObject {
                 existingState.targetReps = exercise.targetReps
                 existingState.hint = exercise.hint
                 existingState.currentWeight = exercise.suggestedWeight
+                existingState.completedSets = min(existingState.completedSets, exercise.targetSets)
+                existingState.liveStatus = existingState.completedSets >= exercise.targetSets ? .completed : (existingState.liveStatus == .completed ? .ready : existingState.liveStatus)
                 return existingState
             }
 
@@ -462,6 +554,13 @@ final class AppStore: ObservableObject {
             }
 
         self.activeWorkout = activeWorkout
+    }
+
+    private func clearOtherActivePhases(in activeWorkout: inout ActiveWorkout, excluding exerciseID: UUID) {
+        for index in activeWorkout.exerciseStates.indices where activeWorkout.exerciseStates[index].id != exerciseID {
+            activeWorkout.exerciseStates[index].phaseStartedAt = nil
+            activeWorkout.exerciseStates[index].liveStatus = activeWorkout.exerciseStates[index].completedSets >= activeWorkout.exerciseStates[index].targetSets ? .completed : .ready
+        }
     }
 
     private func weekDates(containing referenceDate: Date) -> [Date] {

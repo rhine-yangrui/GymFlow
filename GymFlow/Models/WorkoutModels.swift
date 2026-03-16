@@ -44,6 +44,15 @@ enum EffortFeedback: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
 }
 
+enum ExerciseLiveStatus: String, CaseIterable, Codable, Identifiable {
+    case ready = "Ready"
+    case training = "Training"
+    case breakTime = "Break"
+    case completed = "Complete"
+
+    var id: String { rawValue }
+}
+
 struct ExerciseSwapOption: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
@@ -178,6 +187,11 @@ struct ActiveWorkoutExerciseState: Identifiable, Codable, Equatable {
     var currentWeight: String
     var lastFeedback: EffortFeedback?
     var adjustmentNote: String?
+    var liveStatus: ExerciseLiveStatus = .ready
+    var phaseStartedAt: Date? = nil
+    var lastSetDuration: TimeInterval? = nil
+    var lastBreakDuration: TimeInterval? = nil
+    var breakTargetSeconds: Int = 90
 
     var targetRepCount: Int {
         let repValues = targetReps
@@ -190,6 +204,10 @@ struct ActiveWorkoutExerciseState: Identifiable, Codable, Equatable {
 
         return repValues.first ?? 10
     }
+
+    var isComplete: Bool {
+        completedSets >= targetSets
+    }
 }
 
 struct LoggedSet: Identifiable, Codable, Equatable {
@@ -199,6 +217,7 @@ struct LoggedSet: Identifiable, Codable, Equatable {
     var completedAt: Date
     var reps: Int
     var weight: String
+    var setDuration: TimeInterval?
     var intervalSincePreviousSet: TimeInterval?
     var feedback: EffortFeedback?
 
@@ -209,6 +228,7 @@ struct LoggedSet: Identifiable, Codable, Equatable {
         completedAt: Date,
         reps: Int,
         weight: String,
+        setDuration: TimeInterval? = nil,
         intervalSincePreviousSet: TimeInterval? = nil,
         feedback: EffortFeedback?
     ) {
@@ -218,6 +238,7 @@ struct LoggedSet: Identifiable, Codable, Equatable {
         self.completedAt = completedAt
         self.reps = reps
         self.weight = weight
+        self.setDuration = setDuration
         self.intervalSincePreviousSet = intervalSincePreviousSet
         self.feedback = feedback
     }

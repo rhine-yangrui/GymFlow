@@ -2,10 +2,8 @@ import SwiftUI
 
 struct TodayView: View {
     @EnvironmentObject private var store: AppStore
-    @State private var restDuration = 90
-    @State private var restEndDate: Date?
-
-    private let restOptions = [60, 90, 120]
+    @State private var editingExercise: Exercise?
+    @State private var isAddingExercise = false
 
     private var viewModel: TodayViewModel {
         TodayViewModel(store: store)
@@ -21,13 +19,36 @@ struct TodayView: View {
             .padding(.bottom, 24)
         }
         .background(AppTheme.shell.ignoresSafeArea())
+        .sheet(item: $editingExercise) { exercise in
+            ExerciseEditorSheet(date: .now, existingExercise: exercise)
+                .environmentObject(store)
+        }
+        .sheet(isPresented: $isAddingExercise) {
+            ExerciseEditorSheet(date: .now, existingExercise: nil)
+                .environmentObject(store)
+        }
     }
 
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(viewModel.greeting)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.85))
+            HStack {
+                Text(viewModel.greeting)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+
+                Spacer()
+
+                if viewModel.isCustomizedToday {
+                    Text("Customized")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(Color.white.opacity(0.18))
+                        )
+                }
+            }
 
             Text("What should you do today?")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
@@ -38,24 +59,26 @@ struct TodayView: View {
                 .foregroundStyle(.white.opacity(0.82))
 
             if let activeWorkout = viewModel.activeWorkout {
-                HStack {
-                    ProgressRing(
-                        progress: viewModel.progress,
-                        valueText: "\(Int(viewModel.progress * 100))%",
-                        caption: "Today"
-                    )
-                    .frame(width: 96, height: 96)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    HStack {
+                        ProgressRing(
+                            progress: viewModel.progress,
+                            valueText: "\(Int(viewModel.progress * 100))%",
+                            caption: "Today"
+                        )
+                        .frame(width: 96, height: 96)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(activeWorkout.dayTitle)
-                            .font(.title3.bold())
-                            .foregroundStyle(.white)
-                        Text("\(activeWorkout.estimatedMinutes) min planned")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.8))
-                        Text(viewModel.encouragement)
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.82))
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(activeWorkout.dayTitle)
+                                .font(.title3.bold())
+                                .foregroundStyle(.white)
+                            Text("Workout timer: \(intervalString(from: context.date.timeIntervalSince(activeWorkout.startedAt)))")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text(viewModel.encouragement)
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.82))
+                        }
                     }
                 }
             }
@@ -73,7 +96,7 @@ struct TodayView: View {
             completedWorkoutCard(completedSession)
         } else if let activeWorkout = viewModel.activeWorkout {
             activeWorkoutContent(activeWorkout)
-        } else if let todayPlan = viewModel.todayPlan, todayPlan.isRecovery == false {
+        } else if let todayPlan = viewModel.todayPlan, todayPlan.isRecovery == false || todayPlan.exercises.isEmpty == false {
             startWorkoutContent(todayPlan)
         } else {
             recoveryDayContent
@@ -83,15 +106,23 @@ struct TodayView: View {
     private func startWorkoutContent(_ day: WorkoutDay) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             EmptyStateView(
-                title: "Start today with one tap",
-                message: "Your \(day.title.lowercased()) session is ready. You do not need to plan anything else first.",
-                icon: "figure.strengthtraining.traditional"
+                title: day.exercises.isEmpty ? "Build today’s workout first" : "Start today with one tap",
+                message: day.exercises.isEmpty
+                    ? "Add your own exercises or edit the ones you want, then start the session."
+                    : "Every exercise below can be edited before you begin, so today’s workout can match what you actually want to do.",
+                icon: day.exercises.isEmpty ? "slider.horizontal.3" : "figure.strengthtraining.traditional"
             )
 
             SectionHeader(title: day.title, subtitle: "\(day.focusArea) • About \(day.estimatedMinutes) min")
 
-            ForEach(day.exercises.prefix(3)) { exercise in
-                exercisePreviewRow(exercise)
+            if day.exercises.isEmpty == false {
+                ForEach(day.exercises) { exercise in
+                    exercisePreviewRow(exercise)
+                }
+            }
+
+            SecondaryButton(title: "Add Exercise", systemImage: "plus") {
+                isAddingExercise = true
             }
 
             PrimaryButton(title: "Start Today’s Workout", systemImage: "play.fill") {
@@ -100,44 +131,77 @@ struct TodayView: View {
                     store.startWorkout()
                 }
             }
+            .disabled(day.exercises.isEmpty)
+            .opacity(day.exercises.isEmpty ? 0.45 : 1)
         }
     }
 
     private func activeWorkoutContent(_ activeWorkout: ActiveWorkout) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            SectionHeader(title: activeWorkout.dayTitle, subtitle: viewModel.encouragement)
+            SectionHeader(title: activeWorkout.dayTitle, subtitle: "Each exercise now carries its own status, set timer, break timer, and quick edit button.")
 
             ForEach(displayExercises(for: activeWorkout)) { exercise in
-                let state = activeWorkout.exerciseStates.first(where: { $0.id == exercise.id })
-
-                ExerciseCard(
-                    exercise: exercise,
-                    completedSets: state?.completedSets ?? 0,
-                    currentWeight: state?.currentWeight ?? exercise.suggestedWeight,
-                    lastFeedback: state?.lastFeedback,
-                    adjustmentNote: state?.adjustmentNote,
-                    onLogSet: {
-                        FeedbackEngine.impact()
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                            store.logSet(for: exercise.id)
+                if let state = activeWorkout.exerciseStates.first(where: { $0.id == exercise.id }) {
+                    ExerciseCard(
+                        exercise: exercise,
+                        completedSets: state.completedSets,
+                        currentWeight: state.currentWeight,
+                        lastFeedback: state.lastFeedback,
+                        adjustmentNote: state.adjustmentNote,
+                        liveStatus: state.liveStatus,
+                        phaseStartedAt: state.phaseStartedAt,
+                        lastSetDuration: state.lastSetDuration,
+                        lastBreakDuration: state.lastBreakDuration,
+                        breakTargetSeconds: state.breakTargetSeconds,
+                        onStartTraining: {
+                            FeedbackEngine.impact()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                store.startTraining(for: exercise.id)
+                            }
+                        },
+                        onFinishSet: {
+                            FeedbackEngine.success()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                store.finishTrainingAndLogSet(for: exercise.id)
+                            }
+                        },
+                        onStartBreak: {
+                            FeedbackEngine.impact()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                store.startBreak(for: exercise.id)
+                            }
+                        },
+                        onEndBreak: {
+                            FeedbackEngine.impact()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                store.endBreak(for: exercise.id)
+                            }
+                        },
+                        onBreakTargetSelected: { seconds in
+                            store.setBreakTarget(for: exercise.id, seconds: seconds)
+                        },
+                        onTooEasy: {
+                            FeedbackEngine.impact()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                store.updateDifficulty(for: exercise.id, feedback: .tooEasy)
+                            }
+                        },
+                        onTooHard: {
+                            FeedbackEngine.impact()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                store.updateDifficulty(for: exercise.id, feedback: .tooHard)
+                            }
+                        },
+                        onEdit: {
+                            editingExercise = exercise
                         }
-                    },
-                    onTooEasy: {
-                        FeedbackEngine.impact()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            store.updateDifficulty(for: exercise.id, feedback: .tooEasy)
-                        }
-                    },
-                    onTooHard: {
-                        FeedbackEngine.impact()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            store.updateDifficulty(for: exercise.id, feedback: .tooHard)
-                        }
-                    }
-                )
+                    )
+                }
             }
 
-            restTimerCard
+            SecondaryButton(title: "Add Exercise", systemImage: "plus") {
+                isAddingExercise = true
+            }
 
             PrimaryButton(title: "Finish Workout", systemImage: "checkmark.circle.fill") {
                 FeedbackEngine.success()
@@ -178,7 +242,7 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(loggedSet.exerciseName)
                             .font(.headline)
-                        Text("\(loggedSet.reps) reps • \(loggedSet.weight)")
+                        Text(sessionLine(for: loggedSet))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -201,9 +265,13 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 18) {
             EmptyStateView(
                 title: "Recovery matters too",
-                message: "A lighter day can support long-term consistency. Use Recovery to check in before deciding how hard to push.",
+                message: "A lighter day can support long-term consistency. If you want to train anyway, add exercises for today and make it your own.",
                 icon: "figure.cooldown"
             )
+
+            SecondaryButton(title: "Add Exercise", systemImage: "plus") {
+                isAddingExercise = true
+            }
 
             if let recommendation = store.latestRecoveryCheckIn()?.recommendation {
                 RecoveryRecommendationCard(recommendation: recommendation)
@@ -211,57 +279,35 @@ struct TodayView: View {
         }
     }
 
-    private var restTimerCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SectionHeader(title: "Rest timer", subtitle: "Keep the pace moving without checking the clock.")
-
-            HStack(spacing: 10) {
-                ForEach(restOptions, id: \.self) { option in
-                    Button {
-                        restDuration = option
-                        startRestTimer()
-                    } label: {
-                        Text("\(option)s")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(restDuration == option ? .white : Color.primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 44)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(restDuration == option ? AppTheme.accent : Color.primary.opacity(0.06))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(timerLabel(at: context.date))
-                    .font(.title3.bold())
-                    .foregroundStyle(restRemaining(at: context.date) > 0 ? AppTheme.accent : .primary)
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(AppTheme.card)
-        )
-    }
-
     private func exercisePreviewRow(_ exercise: Exercise) -> some View {
-        HStack {
+        HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(exercise.name)
                     .font(.headline)
                 Text("\(exercise.targetSets) sets • \(exercise.targetReps) reps")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                Text(exercise.suggestedWeight)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.accent)
             }
 
             Spacer()
 
-            Image(systemName: "arrow.right.circle.fill")
-                .foregroundStyle(AppTheme.accent)
+            Button {
+                editingExercise = exercise
+            } label: {
+                Label("Edit", systemImage: "square.and.pencil")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.06))
+                    )
+            }
+            .buttonStyle(.plain)
         }
         .padding(18)
         .background(
@@ -270,27 +316,30 @@ struct TodayView: View {
         )
     }
 
-    private func startRestTimer() {
-        FeedbackEngine.impact()
-        restEndDate = Date().addingTimeInterval(TimeInterval(restDuration))
+    private func sessionLine(for loggedSet: LoggedSet) -> String {
+        var parts = ["\(loggedSet.reps) reps", loggedSet.weight]
+
+        if let setDuration = loggedSet.setDuration {
+            parts.append("set \(intervalString(from: setDuration))")
+        }
+
+        if let intervalSincePreviousSet = loggedSet.intervalSincePreviousSet {
+            parts.append("gap \(intervalString(from: intervalSincePreviousSet))")
+        }
+
+        return parts.joined(separator: " • ")
     }
 
-    private func restRemaining(at date: Date) -> Int {
-        guard let restEndDate else { return 0 }
-        return max(Int(restEndDate.timeIntervalSince(date).rounded(.up)), 0)
-    }
-
-    private func timerLabel(at date: Date) -> String {
-        let remaining = restRemaining(at: date)
-        guard remaining > 0 else { return "Timer ready" }
-        let minutes = remaining / 60
-        let seconds = remaining % 60
-        return String(format: "%d:%02d left", minutes, seconds)
+    private func intervalString(from interval: TimeInterval) -> String {
+        let totalSeconds = max(Int(interval.rounded()), 0)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 
     private func displayExercises(for activeWorkout: ActiveWorkout) -> [Exercise] {
-        if let planDay = store.workoutPlan?.days.first(where: { $0.id == activeWorkout.dayID }) {
-            return planDay.exercises
+        if let workoutDay = store.workoutDay(for: activeWorkout.date) {
+            return workoutDay.exercises
         }
 
         return activeWorkout.exerciseStates.map {
