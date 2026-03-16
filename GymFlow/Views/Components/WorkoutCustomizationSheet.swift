@@ -381,14 +381,32 @@ struct SessionDetailsSheet: View {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        store.updateWorkoutDayDetails(
-                            on: date,
-                            title: resolvedTopic,
-                            focusArea: focusArea.trimmingCharacters(in: .whitespacesAndNewlines),
-                            estimatedMinutes: workoutDay?.estimatedMinutes ?? 35,
-                            resetPlan: shouldResetPlan,
-                            saveTopicAsReusable: saveTopicAsReusable
-                        )
+                        let trimmedFocus = focusArea.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                        if shouldResetPlan {
+                            store.updateWorkoutDayDetails(
+                                on: date,
+                                title: resolvedTopic,
+                                focusArea: trimmedFocus,
+                                estimatedMinutes: workoutDay?.estimatedMinutes ?? 35,
+                                resetPlan: true,
+                                saveTopicAsReusable: saveTopicAsReusable
+                            )
+                        } else {
+                            if resolvedTopic != existingTopic, store.hasDefaultWorkoutTemplate(for: resolvedTopic) {
+                                store.applyDefaultWorkoutTemplate(for: resolvedTopic, on: date)
+                            }
+
+                            store.updateWorkoutDayDetails(
+                                on: date,
+                                title: resolvedTopic,
+                                focusArea: trimmedFocus,
+                                estimatedMinutes: workoutDay?.estimatedMinutes ?? 35,
+                                resetPlan: false,
+                                saveTopicAsReusable: saveTopicAsReusable
+                            )
+                        }
+
                         if saveAsDefaultTemplate && canSaveAsDefault {
                             store.saveWorkoutDayAsDefaultTemplate(on: date, topic: resolvedTopic)
                         }

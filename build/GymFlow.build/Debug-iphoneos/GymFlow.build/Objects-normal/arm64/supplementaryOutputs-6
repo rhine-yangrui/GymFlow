@@ -1,0 +1,30 @@
+{
+  "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/App/RootView.swift" : {
+    "const-values" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/RootView.swiftconstvalues",
+    "dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/RootView.d",
+    "diagnostics" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/RootView.dia",
+    "object" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/RootView.o",
+    "swift-dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/RootView.swiftdeps"
+  },
+  "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Views/Components/SecondaryButton.swift" : {
+    "const-values" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SecondaryButton.swiftconstvalues",
+    "dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SecondaryButton.d",
+    "diagnostics" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SecondaryButton.dia",
+    "object" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SecondaryButton.o",
+    "swift-dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SecondaryButton.swiftdeps"
+  },
+  "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Views/Components/SectionHeader.swift" : {
+    "const-values" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SectionHeader.swiftconstvalues",
+    "dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SectionHeader.d",
+    "diagnostics" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SectionHeader.dia",
+    "object" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SectionHeader.o",
+    "swift-dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/SectionHeader.swiftdeps"
+  },
+  "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/GymFlow/Views/Components/StatCard.swift" : {
+    "const-values" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/StatCard.swiftconstvalues",
+    "dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/StatCard.d",
+    "diagnostics" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/StatCard.dia",
+    "object" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/StatCard.o",
+    "swift-dependencies" : "/Users/rhine_e/Documents/26WN/497/A2/GymFlow/build/GymFlow.build/Debug-iphoneos/GymFlow.build/Objects-normal/arm64/StatCard.swiftdeps"
+  }
+}
