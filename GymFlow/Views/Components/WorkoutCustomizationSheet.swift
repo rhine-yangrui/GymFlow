@@ -373,6 +373,14 @@ struct SessionDetailsSheet: View {
             }
             .navigationTitle("Edit Session")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: selectedTopic) {
+                syncFocusWithTopic()
+            }
+            .onChange(of: customTopic) {
+                if selectedTopic == Self.customTopicLabel {
+                    syncFocusWithTopic()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
@@ -399,6 +407,16 @@ struct SessionDetailsSheet: View {
                 }
             }
         }
+    }
+
+    private func syncFocusWithTopic() {
+        let topic = resolvedTopic
+        if topic.isEmpty {
+            focusArea = ""
+            return
+        }
+
+        focusArea = store.suggestedFocusArea(for: topic)
     }
 
     private static let defaultTopics = [

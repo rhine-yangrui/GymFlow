@@ -149,7 +149,11 @@ final class AppStore: ObservableObject {
         var seen: Set<String> = []
         var result: [String] = []
 
-        for topic in Self.builtInTopics + savedTopicOptions + defaultWorkoutTemplates.map(\.title) {
+        let generatedTopics = workoutPlan?.days
+            .filter { $0.exercises.isEmpty == false }
+            .map(\.title) ?? []
+
+        for topic in Self.builtInTopics + generatedTopics + savedTopicOptions + defaultWorkoutTemplates.map(\.title) {
             let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
             let key = normalizedTopicKey(trimmedTopic)
             guard trimmedTopic.isEmpty == false, seen.contains(key) == false else { continue }
@@ -163,11 +167,47 @@ final class AppStore: ObservableObject {
     func defaultWorkoutTemplate(for topic: String) -> DefaultWorkoutTemplate? {
         let key = normalizedTopicKey(topic)
         guard key.isEmpty == false else { return nil }
-        return defaultWorkoutTemplates.first(where: { $0.topicKey == key })
+        if let savedTemplate = defaultWorkoutTemplates.first(where: { $0.topicKey == key }) {
+            return savedTemplate
+        }
+
+        return generatedWorkoutTemplate(for: key)
     }
 
     func hasDefaultWorkoutTemplate(for topic: String) -> Bool {
         defaultWorkoutTemplate(for: topic) != nil
+    }
+
+    func suggestedFocusArea(for topic: String) -> String {
+        let trimmedTopic = topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedTopic.isEmpty == false else { return "" }
+
+        if let template = defaultWorkoutTemplate(for: trimmedTopic) {
+            return template.focusArea
+        }
+
+        switch normalizedTopicKey(trimmedTopic) {
+        case "push":
+            return "Chest, shoulders, and triceps"
+        case "pull":
+            return "Back, posture, and upper-arm support"
+        case "legs":
+            return "Quads, glutes, and lower-body stability"
+        case "upper":
+            return "Balanced upper-body strength"
+        case "lower":
+            return "Lower-body strength and support work"
+        case "full body":
+            return "Fast full-body work with low decision fatigue"
+        case "conditioning":
+            return "Short conditioning and core support"
+        case "recovery":
+            return "Recovery and light movement"
+        case "open session":
+            return ""
+        default:
+            return ""
+        }
     }
 
     func activeWorkoutForToday(referenceDate: Date = .now) -> ActiveWorkout? {
@@ -626,6 +666,22 @@ final class AppStore: ObservableObject {
         topic
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
+    }
+
+    private func generatedWorkoutTemplate(for topicKey: String) -> DefaultWorkoutTemplate? {
+        guard let workoutDay = workoutPlan?.days.first(where: {
+            normalizedTopicKey($0.title) == topicKey && $0.exercises.isEmpty == false
+        }) else {
+            return nil
+        }
+
+        return DefaultWorkoutTemplate(
+            topicKey: topicKey,
+            title: workoutDay.title,
+            focusArea: workoutDay.focusArea,
+            estimatedMinutes: workoutDay.estimatedMinutes,
+            exercises: clonedExercises(workoutDay.exercises)
+        )
     }
 
     private func synchronizeActiveWorkoutIfNeeded(for date: Date, with workoutDay: WorkoutDay) {
