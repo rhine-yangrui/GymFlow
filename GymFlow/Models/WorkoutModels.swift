@@ -171,6 +171,85 @@ struct Exercise: Identifiable, Codable, Equatable {
 
         return repValues.first ?? 10
     }
+
+    var muscleGroups: [String] {
+        MuscleGroupLookup.groups(forExerciseName: name)
+    }
+}
+
+enum MuscleGroupLookup {
+    static func groups(forExerciseName name: String) -> [String] {
+        let key = name.lowercased()
+
+        if key.contains("bench press") || key.contains("chest press") || key.contains("machine chest") || key.contains("floor press") {
+            return ["Chest", "Triceps"]
+        }
+        if key.contains("incline") && key.contains("press") {
+            return ["Upper Chest", "Shoulders"]
+        }
+        if key.contains("cable fly") || key.contains("band fly") {
+            return ["Chest"]
+        }
+        if key.contains("push-up") || key.contains("push up") || key.contains("pushup") {
+            return ["Chest", "Triceps", "Core"]
+        }
+        if key.contains("pike press") || key.contains("shoulder press") || key.contains("overhead press") {
+            return ["Shoulders", "Triceps"]
+        }
+        if key.contains("lateral raise") {
+            return ["Shoulders"]
+        }
+        if key.contains("triceps") || key.contains("pressdown") || key.contains("dip") {
+            return ["Triceps"]
+        }
+        if key.contains("lat pulldown") || key.contains("pull-up") || key.contains("pullup") {
+            return ["Lats", "Biceps"]
+        }
+        if key.contains("row") {
+            return ["Back", "Biceps"]
+        }
+        if key.contains("face pull") || key.contains("snow angel") {
+            return ["Rear Delts", "Upper Back"]
+        }
+        if key.contains("curl") {
+            return ["Biceps"]
+        }
+        if key.contains("squat") {
+            return ["Quads", "Glutes"]
+        }
+        if key.contains("leg press") || key.contains("hack squat") {
+            return ["Quads", "Glutes"]
+        }
+        if key.contains("romanian") || key.contains("hinge") || key.contains("deadlift") {
+            return ["Hamstrings", "Glutes"]
+        }
+        if key.contains("lunge") || key.contains("step-up") || key.contains("step up") {
+            return ["Quads", "Glutes"]
+        }
+        if key.contains("leg curl") {
+            return ["Hamstrings"]
+        }
+        if key.contains("glute bridge") {
+            return ["Glutes"]
+        }
+        if key.contains("calf") {
+            return ["Calves"]
+        }
+        if key.contains("plank") || key.contains("dead bug") || key.contains("mountain climber") {
+            return ["Core"]
+        }
+        if key.contains("kettlebell swing") {
+            return ["Glutes", "Hamstrings", "Core"]
+        }
+        if key.contains("bike") || key.contains("sprint") || key.contains("jump rope") {
+            return ["Cardio"]
+        }
+        if key.contains("mobility") {
+            return ["Mobility"]
+        }
+
+        return []
+    }
 }
 
 struct DailyWorkoutOverride: Identifiable, Codable, Equatable {

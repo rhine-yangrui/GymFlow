@@ -18,6 +18,7 @@ struct RecoveryView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                recoveryScoreCard
                 RecoveryRecommendationCard(recommendation: liveRecommendation)
                 checkInCard
                 tipsCard
@@ -37,6 +38,52 @@ struct RecoveryView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var recoveryScoreCard: some View {
+        HStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .stroke(viewModel.recoveryStatusColor.opacity(0.15), lineWidth: 10)
+
+                Circle()
+                    .trim(from: 0, to: Double(viewModel.recoveryScore) / 100)
+                    .stroke(
+                        viewModel.recoveryStatusColor,
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+
+                VStack(spacing: 0) {
+                    Text("\(viewModel.recoveryScore)")
+                        .font(.system(.title, design: .rounded, weight: .bold))
+                    Text("/100")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 92, height: 92)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Recovery Score")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(viewModel.recoveryStatusLabel)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(viewModel.lastWorkoutLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(22)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(AppTheme.card)
+        )
     }
 
     private var checkInCard: some View {

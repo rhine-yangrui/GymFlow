@@ -8,6 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		10BEC21284BCABBFFEFC5255 /* StatCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D91541520960D62CC5E993D /* StatCard.swift */; };
+		1A2B3C4D5E6F708192A3B4C5 /* RunModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C6 /* RunModels.swift */; };
+		1A2B3C4D5E6F708192A3B4D7 /* RunViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4D8 /* RunViewModel.swift */; };
+		1A2B3C4D5E6F708192A3B4E9 /* PaceRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4EA /* PaceRingView.swift */; };
+		1A2B3C4D5E6F708192A3B4FB /* ActiveRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4FC /* ActiveRunView.swift */; };
+		1A2B3C4D5E6F708192A3B50D /* RunSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B50E /* RunSummaryView.swift */; };
+		1A2B3C4D5E6F708192A3B51F /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B520 /* RunView.swift */; };
 		272EA3E3929E04C3BA9E81A2 /* ProgressRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BDAC150782A039C4C90EDE /* ProgressRing.swift */; };
 		287451C92ACB9A106786F061 /* WorkoutCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351F0C4F86EACEEB59985AE3 /* WorkoutCustomizationSheet.swift */; };
 		2944DABF81E7827F72D4B463 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA170425B22BB9884FB655C5 /* TodayView.swift */; };
@@ -16,6 +22,7 @@
 		389F9A88DE94138677915926 /* WorkoutModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC557855AACE5B7FC4649A46 /* WorkoutModels.swift */; };
 		3BC1DB88AFFF144B2B5CADBA /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887EBBCC286F0C29DE9ED2B6 /* EmptyStateView.swift */; };
 		3DD50683A9A238A1E74FD78A /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2132F98C69B85AD311CF0E8A /* AppStore.swift */; };
+		41BEC92C8D435AA7756165A0 /* RestTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328CF0AF06BD1F54772213F8 /* RestTimerView.swift */; };
 		422CAA91FF3DE3628BD4347C /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8147C5866031B79D12DA9F9C /* AppTheme.swift */; };
 		4637ED4C576E87A86FFF7552 /* RecoveryRecommendationCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82241CDDC9114A91AE1107D /* RecoveryRecommendationCard.swift */; };
 		4B6625DB679C7C394212164B /* PlanViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66FF4E6F1819E11CB1E3059D /* PlanViewModel.swift */; };
@@ -40,9 +47,16 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1A2B3C4D5E6F708192A3B4C6 /* RunModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunModels.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B4D8 /* RunViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunViewModel.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B4EA /* PaceRingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaceRingView.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B4FC /* ActiveRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunView.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B50E /* RunSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSummaryView.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B520 /* RunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunView.swift; sourceTree = "<group>"; };
 		1D91541520960D62CC5E993D /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
 		2132F98C69B85AD311CF0E8A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		2735C619D57C74BD846C4624 /* FeedbackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackEngine.swift; sourceTree = "<group>"; };
+		328CF0AF06BD1F54772213F8 /* RestTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerView.swift; sourceTree = "<group>"; };
 		351F0C4F86EACEEB59985AE3 /* WorkoutCustomizationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCustomizationSheet.swift; sourceTree = "<group>"; };
 		3A38F5EFAC7CEE574E8F958E /* ProgressModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressModels.swift; sourceTree = "<group>"; };
 		3D1A6E749873B15C60DD8A87 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
@@ -77,11 +91,15 @@
 		2194746657F65DC7B28124AD /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				1A2B3C4D5E6F708192A3B4FC /* ActiveRunView.swift */,
 				887EBBCC286F0C29DE9ED2B6 /* EmptyStateView.swift */,
 				E153225622B4412132E9E9E3 /* ExerciseCard.swift */,
+				1A2B3C4D5E6F708192A3B4EA /* PaceRingView.swift */,
 				3D1A6E749873B15C60DD8A87 /* PrimaryButton.swift */,
 				96BDAC150782A039C4C90EDE /* ProgressRing.swift */,
 				D82241CDDC9114A91AE1107D /* RecoveryRecommendationCard.swift */,
+				328CF0AF06BD1F54772213F8 /* RestTimerView.swift */,
+				1A2B3C4D5E6F708192A3B50E /* RunSummaryView.swift */,
 				D550EDFDF167FBA507117226 /* SecondaryButton.swift */,
 				A433B324FF9DA0A84FBD904D /* SectionHeader.swift */,
 				1D91541520960D62CC5E993D /* StatCard.swift */,
@@ -115,6 +133,7 @@
 				66FF4E6F1819E11CB1E3059D /* PlanViewModel.swift */,
 				AE901EE37AEEBB4D6196C15A /* ProgressViewModel.swift */,
 				B86236C5C996B8D8551AE86C /* RecoveryViewModel.swift */,
+				1A2B3C4D5E6F708192A3B4D8 /* RunViewModel.swift */,
 				67796798621C3FA64E406347 /* TodayViewModel.swift */,
 			);
 			path = ViewModels;
@@ -127,6 +146,7 @@
 				ADC29182D8B1D9CA52C9BB04 /* PlanView.swift */,
 				76E661ED4A58F9AA1BE33A6F /* ProgressView.swift */,
 				BB608CC2D7A47ADB80A9BE40 /* RecoveryView.swift */,
+				1A2B3C4D5E6F708192A3B520 /* RunView.swift */,
 				EA170425B22BB9884FB655C5 /* TodayView.swift */,
 			);
 			path = Tabs;
@@ -145,6 +165,7 @@
 			children = (
 				3A38F5EFAC7CEE574E8F958E /* ProgressModels.swift */,
 				99F55E939292CFDE9436597A /* RecoveryModels.swift */,
+				1A2B3C4D5E6F708192A3B4C6 /* RunModels.swift */,
 				4FAC52E3DE0BF2872AB67952 /* UserProfile.swift */,
 				BC557855AACE5B7FC4649A46 /* WorkoutModels.swift */,
 			);
@@ -252,6 +273,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A2B3C4D5E6F708192A3B4FB /* ActiveRunView.swift in Sources */,
 				3DD50683A9A238A1E74FD78A /* AppStore.swift in Sources */,
 				422CAA91FF3DE3628BD4347C /* AppTheme.swift in Sources */,
 				3BC1DB88AFFF144B2B5CADBA /* EmptyStateView.swift in Sources */,
@@ -261,6 +283,7 @@
 				8CA7A11C4286A5494F51FA25 /* MainTabView.swift in Sources */,
 				5C8AA2278B5985D9E4F875C7 /* OnboardingFlowView.swift in Sources */,
 				8A63B4E545C66A72CE461C14 /* OnboardingViewModel.swift in Sources */,
+				1A2B3C4D5E6F708192A3B4E9 /* PaceRingView.swift in Sources */,
 				51D87AA22D6B07462D3A902E /* PlanView.swift in Sources */,
 				4B6625DB679C7C394212164B /* PlanViewModel.swift in Sources */,
 				35EA3DAD9A4310FF3C2F7C24 /* PrimaryButton.swift in Sources */,
@@ -272,7 +295,12 @@
 				4637ED4C576E87A86FFF7552 /* RecoveryRecommendationCard.swift in Sources */,
 				B34D8DC53E23E2DD2C71000B /* RecoveryView.swift in Sources */,
 				32D1C2D69F627E8EF8A4C321 /* RecoveryViewModel.swift in Sources */,
+				41BEC92C8D435AA7756165A0 /* RestTimerView.swift in Sources */,
 				9B03D77276937D73D083F4C6 /* RootView.swift in Sources */,
+				1A2B3C4D5E6F708192A3B4C5 /* RunModels.swift in Sources */,
+				1A2B3C4D5E6F708192A3B50D /* RunSummaryView.swift in Sources */,
+				1A2B3C4D5E6F708192A3B51F /* RunView.swift in Sources */,
+				1A2B3C4D5E6F708192A3B4D7 /* RunViewModel.swift in Sources */,
 				8D671983C1F45FA2BA538CC0 /* SecondaryButton.swift in Sources */,
 				FA48D3B17928C7200B8F13A9 /* SectionHeader.swift in Sources */,
 				10BEC21284BCABBFFEFC5255 /* StatCard.swift in Sources */,

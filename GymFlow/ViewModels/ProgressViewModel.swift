@@ -18,6 +18,36 @@ struct ProgressViewModel {
         store.completedSessions.count
     }
 
+    var weeklyWorkoutsCount: Int {
+        sessionsThisWeek.count
+    }
+
+    var weeklyTotalVolume: Int {
+        sessionsThisWeek.reduce(0) { total, session in
+            total + session.loggedSets.reduce(0) { setTotal, loggedSet in
+                setTotal + Int(numericWeight(for: loggedSet.weight)) * loggedSet.reps
+            }
+        }
+    }
+
+    var weeklyTotalVolumeLabel: String {
+        let volume = weeklyTotalVolume
+        if volume >= 1000 {
+            let thousands = Double(volume) / 1000
+            return String(format: "%.1fk lb", thousands)
+        }
+        return "\(volume) lb"
+    }
+
+    var weeklyAverageDurationMinutes: Int {
+        let sessions = sessionsThisWeek
+        guard sessions.isEmpty == false else { return 0 }
+        let totalMinutes = sessions.reduce(0) { total, session in
+            total + max(Int(session.completedAt.timeIntervalSince(session.startedAt) / 60), 0)
+        }
+        return totalMinutes / sessions.count
+    }
+
     var currentStreak: Int {
         let uniqueDates = uniqueWorkoutDates
         guard uniqueDates.isEmpty == false else { return 0 }

@@ -14,6 +14,7 @@ struct ExerciseCard: View {
     var onFinishSet: () -> Void
     var onEffortSelected: (Int) -> Void
     var onEdit: () -> Void
+    var onStartRest: (() -> Void)? = nil
 
     private var isComplete: Bool {
         completedSets >= exercise.targetSets
@@ -58,6 +59,9 @@ struct ExerciseCard: View {
                         .foregroundStyle(.secondary)
                     Text("Suggested weight: \(currentWeight)")
                         .font(.subheadline.weight(.semibold))
+                    if exercise.muscleGroups.isEmpty == false {
+                        MuscleGroupTagRow(groups: exercise.muscleGroups)
+                    }
                 }
 
                 Spacer()
@@ -103,6 +107,12 @@ struct ExerciseCard: View {
             }
             .disabled(isComplete)
             .opacity(isComplete ? 0.45 : 1)
+
+            if liveStatus == .breakTime, let onStartRest {
+                SecondaryButton(title: "Start Rest Timer", systemImage: "timer") {
+                    onStartRest()
+                }
+            }
 
             if isComplete {
                 effortScale
@@ -324,6 +334,28 @@ struct ExerciseCard: View {
             return AppTheme.accentWarm
         default:
             return AppTheme.accent
+        }
+    }
+}
+
+struct MuscleGroupTagRow: View {
+    var groups: [String]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(groups, id: \.self) { group in
+                    Text(group)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(AppTheme.accent)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(AppTheme.accent.opacity(0.12))
+                        )
+                }
+            }
         }
     }
 }

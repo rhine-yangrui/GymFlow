@@ -27,6 +27,8 @@ final class AppStore: ObservableObject {
     @Published private(set) var recoveryHistory: [RecoveryCheckIn] = [] {
         didSet { save(recoveryHistory, for: .recoveryHistory) }
     }
+    @Published var currentStreak: Int = 3
+    @Published var bestStreak: Int = 7
 
     private let defaults: UserDefaults
     private let encoder: JSONEncoder = {

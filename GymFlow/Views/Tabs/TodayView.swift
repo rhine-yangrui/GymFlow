@@ -6,6 +6,8 @@ struct TodayView: View {
     @State private var isEditingSessionDetails = false
     @State private var isAddingExercise = false
     @State private var sessionPendingDeletion: WorkoutSession?
+    @State private var restTimerSeconds: Int?
+    @State private var showCelebration = false
 
     private var viewModel: TodayViewModel {
         TodayViewModel(store: store)
@@ -14,6 +16,7 @@ struct TodayView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
+                streakBanner
                 headerCard
                 bodyContent
                 if viewModel.completedSessionsToday.isEmpty == false {
@@ -35,6 +38,20 @@ struct TodayView: View {
         .sheet(isPresented: $isAddingExercise) {
             ExerciseEditorSheet(date: .now, existingExercise: nil)
                 .environmentObject(store)
+        }
+        .sheet(isPresented: Binding(
+            get: { restTimerSeconds != nil },
+            set: { if $0 == false { restTimerSeconds = nil } }
+        )) {
+            if let seconds = restTimerSeconds {
+                RestTimerView(
+                    totalSeconds: seconds,
+                    onComplete: {},
+                    onDismiss: { restTimerSeconds = nil }
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+            }
         }
         .confirmationDialog(
             "Delete training record?",
@@ -59,6 +76,57 @@ struct TodayView: View {
         } message: {
             Text("This removes the saved session and any progress derived from it.")
         }
+        .onChange(of: store.activeWorkout?.completedSetCount ?? 0) { _, _ in
+            triggerCelebrationIfComplete()
+        }
+    }
+
+    private func triggerCelebrationIfComplete() {
+        guard let active = store.activeWorkout, active.totalSetCount > 0 else { return }
+        guard active.completedSetCount >= active.totalSetCount else { return }
+        guard showCelebration == false else { return }
+
+        FeedbackEngine.success()
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+            showCelebration = true
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    showCelebration = false
+                }
+            }
+        }
+    }
+
+    private var streakBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "flame.fill")
+                .font(.title3)
+                .foregroundStyle(AppTheme.accent)
+
+            Text("\(store.currentStreak)-day streak")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Text("Best: \(store.bestStreak) days")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(AppTheme.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(AppTheme.accent.opacity(0.18))
+        )
     }
 
     private var headerCard: some View {
@@ -88,6 +156,8 @@ struct TodayView: View {
                             caption: "Today"
                         )
                         .frame(width: 96, height: 96)
+                        .scaleEffect(showCelebration ? 1.12 : 1.0)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.6), value: showCelebration)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text(activeWorkout.dayTitle)
@@ -101,6 +171,23 @@ struct TodayView: View {
                                 .foregroundStyle(.white.opacity(0.82))
                         }
                     }
+                }
+
+                if showCelebration {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(.white)
+                        Text("Workout Complete! 💪")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.2))
+                    )
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
         }
@@ -197,6 +284,10 @@ struct TodayView: View {
                         },
                         onEdit: {
                             editingExercise = exercise
+                        },
+                        onStartRest: {
+                            FeedbackEngine.impact()
+                            restTimerSeconds = state.breakTargetSeconds
                         }
                     )
                 }
@@ -326,6 +417,10 @@ struct TodayView: View {
                 Text(exercise.suggestedWeight)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppTheme.accent)
+                if exercise.muscleGroups.isEmpty == false {
+                    MuscleGroupTagRow(groups: exercise.muscleGroups)
+                        .padding(.top, 2)
+                }
             }
 
             Spacer()

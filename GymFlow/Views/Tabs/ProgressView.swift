@@ -18,11 +18,13 @@ struct ProgressView: View {
                 header
 
                 if viewModel.hasCompletedWorkouts {
+                    weeklySummaryCard
                     progressSummary
                     trendCard
                     badgesCard
                     recentWinsCard
                 } else {
+                    weeklySummaryCard
                     EmptyStateView(
                         title: "No workouts logged yet",
                         message: "Complete today’s session to build your first streak and unlock your first progress snapshot.",
@@ -34,6 +36,55 @@ struct ProgressView: View {
             .padding(.bottom, 24)
         }
         .background(AppTheme.shell.ignoresSafeArea())
+    }
+
+    private var weeklySummaryCard: some View {
+        HStack(spacing: 12) {
+            summaryStat(
+                value: "\(viewModel.weeklyWorkoutsCount)",
+                label: "Workouts",
+                caption: "This week"
+            )
+
+            Divider().frame(height: 52)
+
+            summaryStat(
+                value: viewModel.weeklyTotalVolumeLabel,
+                label: "Volume",
+                caption: "This week"
+            )
+
+            Divider().frame(height: 52)
+
+            summaryStat(
+                value: "\(viewModel.weeklyAverageDurationMinutes) min",
+                label: "Avg Duration",
+                caption: "Per session"
+            )
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(AppTheme.card)
+        )
+    }
+
+    private func summaryStat(value: String, label: String, caption: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(.title2, design: .rounded, weight: .bold))
+                .foregroundStyle(.primary)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(caption)
+                .font(.caption2)
+                .foregroundStyle(.secondary.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var header: some View {
