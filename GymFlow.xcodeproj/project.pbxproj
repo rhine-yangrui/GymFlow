@@ -14,6 +14,7 @@
 		1A2B3C4D5E6F708192A3B4FB /* ActiveRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4FC /* ActiveRunView.swift */; };
 		1A2B3C4D5E6F708192A3B50D /* RunSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B50E /* RunSummaryView.swift */; };
 		1A2B3C4D5E6F708192A3B51F /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B520 /* RunView.swift */; };
+		1A2B3C4D5E6F708192A3B531 /* LocationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B532 /* LocationTracker.swift */; };
 		272EA3E3929E04C3BA9E81A2 /* ProgressRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BDAC150782A039C4C90EDE /* ProgressRing.swift */; };
 		287451C92ACB9A106786F061 /* WorkoutCustomizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351F0C4F86EACEEB59985AE3 /* WorkoutCustomizationSheet.swift */; };
 		2944DABF81E7827F72D4B463 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA170425B22BB9884FB655C5 /* TodayView.swift */; };
@@ -53,6 +54,7 @@
 		1A2B3C4D5E6F708192A3B4FC /* ActiveRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunView.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B50E /* RunSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSummaryView.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B520 /* RunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunView.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B532 /* LocationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTracker.swift; sourceTree = "<group>"; };
 		1D91541520960D62CC5E993D /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
 		2132F98C69B85AD311CF0E8A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		2735C619D57C74BD846C4624 /* FeedbackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackEngine.swift; sourceTree = "<group>"; };
@@ -207,6 +209,7 @@
 			isa = PBXGroup;
 			children = (
 				2132F98C69B85AD311CF0E8A /* AppStore.swift */,
+				1A2B3C4D5E6F708192A3B532 /* LocationTracker.swift */,
 				9DC2BAF565FA621BA7F07304 /* WorkoutPlanGenerator.swift */,
 			);
 			path = Store;
@@ -281,6 +284,7 @@
 				79C2F53039C709EFB3B8D648 /* FeedbackEngine.swift in Sources */,
 				ECDEA3904BDC1FF97AA7ABE6 /* GymFlowApp.swift in Sources */,
 				8CA7A11C4286A5494F51FA25 /* MainTabView.swift in Sources */,
+				1A2B3C4D5E6F708192A3B531 /* LocationTracker.swift in Sources */,
 				5C8AA2278B5985D9E4F875C7 /* OnboardingFlowView.swift in Sources */,
 				8A63B4E545C66A72CE461C14 /* OnboardingViewModel.swift in Sources */,
 				1A2B3C4D5E6F708192A3B4E9 /* PaceRingView.swift in Sources */,
@@ -390,6 +394,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = GymFlow;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "GymFlow uses your location to measure distance, pace, elevation, and route while you run.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -472,6 +477,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = GymFlow;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "GymFlow uses your location to measure distance, pace, elevation, and route while you run.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import CoreLocation
 
 @MainActor
 final class RunViewModel: ObservableObject {
@@ -28,14 +29,46 @@ final class RunViewModel: ObservableObject {
 
     @Published var completedRun: RunRecord? = nil
 
+    @Published var locationErrorMessage: String? = nil
+    @Published var isLocationAuthorized: Bool = false
+    @Published var hasGPSFix: Bool = false
+
+    private let locationTracker = LocationTracker()
+    private var locationCancellable: AnyCancellable?
+    private var authCancellable: AnyCancellable?
+    private var errorCancellable: AnyCancellable?
+
     private var tickCancellable: AnyCancellable?
     private var countdownCancellable: AnyCancellable?
     private var flashDismissTask: Task<Void, Never>? = nil
     private var splitStartTime: TimeInterval = 0
-    private var paceHistory: [Double] = []
+    private var splitStartAltitude: Double = 0
+    private var paceWindow: [Double] = []
+
+    private var previousLocation: CLLocation?
+    private var routePoints: [RoutePoint] = []
 
     init() {
         loadSampleHistory()
+        isLocationAuthorized = locationTracker.isAuthorized
+
+        authCancellable = locationTracker.$authorizationStatus
+            .sink { [weak self] status in
+                guard let self else { return }
+                self.isLocationAuthorized = (status == .authorizedWhenInUse || status == .authorizedAlways)
+            }
+
+        errorCancellable = locationTracker.$errorMessage
+            .sink { [weak self] message in
+                self?.locationErrorMessage = message
+            }
+
+        locationCancellable = locationTracker.locationPublisher
+            .sink { [weak self] location in
+                self?.ingest(location: location)
+            }
+
+        locationTracker.requestAuthorizationIfNeeded()
     }
 
     // MARK: - Run Controls
@@ -75,7 +108,14 @@ final class RunViewModel: ObservableObject {
         liveSplits = []
         latestSplitFlash = nil
         splitStartTime = 0
-        paceHistory = []
+        splitStartAltitude = 0
+        paceWindow = []
+        previousLocation = nil
+        routePoints = []
+        hasGPSFix = false
+        locationErrorMessage = nil
+
+        locationTracker.startTracking()
         startTickingTimer()
     }
 
@@ -84,8 +124,24 @@ final class RunViewModel: ObservableObject {
         tickCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                self?.updateSimulatedRun()
+                self?.handleClockTick()
             }
+    }
+
+    private func handleClockTick() {
+        guard runState == .active else { return }
+        elapsedTime += 1
+
+        if distance > 0 {
+            averagePace = elapsedTime / (distance / 1000.0)
+        }
+        calories = Int(distance / 20.0)
+
+        if selectedMode == .distanceGoal, distance >= distanceGoalKm * 1000 {
+            stopRun()
+        } else if selectedMode == .timeGoal, elapsedTime >= timeGoalMinutes * 60 {
+            stopRun()
+        }
     }
 
     func pauseRun() {
@@ -93,11 +149,15 @@ final class RunViewModel: ObservableObject {
         runState = .paused
         tickCancellable?.cancel()
         tickCancellable = nil
+        locationTracker.stopTracking()
     }
 
     func resumeRun() {
         guard runState == .paused else { return }
         runState = .active
+        previousLocation = nil
+        paceWindow.removeAll()
+        locationTracker.startTracking()
         startTickingTimer()
     }
 
@@ -106,6 +166,7 @@ final class RunViewModel: ObservableObject {
         tickCancellable = nil
         countdownCancellable?.cancel()
         countdownCancellable = nil
+        locationTracker.stopTracking()
         runState = .completed
         completedRun = buildRecord()
     }
@@ -116,6 +177,7 @@ final class RunViewModel: ObservableObject {
         flashDismissTask?.cancel()
         tickCancellable = nil
         countdownCancellable = nil
+        locationTracker.stopTracking()
         runState = .idle
         elapsedTime = 0
         distance = 0
@@ -127,9 +189,12 @@ final class RunViewModel: ObservableObject {
         currentSplitKm = 1
         liveSplits = []
         latestSplitFlash = nil
-        paceHistory = []
+        paceWindow = []
+        previousLocation = nil
+        routePoints = []
         countdownValue = 3
         completedRun = nil
+        hasGPSFix = false
     }
 
     // MARK: - Save / Discard
@@ -149,32 +214,50 @@ final class RunViewModel: ObservableObject {
         runHistory.removeAll { $0.id == run.id }
     }
 
-    // MARK: - Simulation
+    // MARK: - Sensor ingestion
 
-    private func updateSimulatedRun() {
-        elapsedTime += 1
+    private func ingest(location: CLLocation) {
+        guard runState == .active else { return }
 
-        let baseSpeed = 3.03
-        let variance = Double.random(in: -0.3...0.3)
-        let speed = max(0.5, baseSpeed + variance)
-        distance += speed
+        hasGPSFix = true
 
-        let elevChange = Double.random(in: -0.2...0.3)
-        currentElevation += elevChange
-        if elevChange > 0 { elevationGain += elevChange }
-
-        if distance > 0 {
-            averagePace = elapsedTime / (distance / 1000.0)
-            let jitter = Double.random(in: -20...20)
-            let rawPace = max(200, min(600, averagePace + jitter))
-            paceHistory.append(rawPace)
-            if paceHistory.count > 10 {
-                paceHistory.removeFirst(paceHistory.count - 10)
+        if let previous = previousLocation {
+            let altitudeDelta = location.altitude - previous.altitude
+            if altitudeDelta > 0.5 {
+                elevationGain += altitudeDelta
             }
-            currentPace = paceHistory.reduce(0, +) / Double(paceHistory.count)
+
+            let distanceDelta = location.distance(from: previous)
+            if distanceDelta >= 1.0 && distanceDelta < 120 {
+                distance += distanceDelta
+            }
+        } else {
+            splitStartAltitude = location.altitude
+        }
+        currentElevation = location.altitude
+        previousLocation = location
+
+        let speed = location.speed
+        if location.speedAccuracy >= 0 && speed > 0.5 {
+            let paceSecPerKm = 1000.0 / speed
+            paceWindow.append(paceSecPerKm)
+            if paceWindow.count > 5 {
+                paceWindow.removeFirst(paceWindow.count - 5)
+            }
+            currentPace = paceWindow.reduce(0, +) / Double(paceWindow.count)
+        } else if speed <= 0.3 {
+            paceWindow.removeAll()
+            currentPace = 0
         }
 
-        calories = Int(distance / 20.0)
+        routePoints.append(
+            RoutePoint(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude,
+                elevation: location.altitude,
+                timestamp: location.timestamp.timeIntervalSince1970
+            )
+        )
 
         let reachedKm = Int(distance / 1000.0) + 1
         if reachedKm > currentSplitKm {
@@ -184,19 +267,14 @@ final class RunViewModel: ObservableObject {
                 kilometer: currentSplitKm,
                 duration: splitDuration,
                 pace: splitDuration,
-                elevationChange: Double.random(in: -5...10)
+                elevationChange: location.altitude - splitStartAltitude
             )
             liveSplits.append(split)
             flashSplit(split)
             splitStartTime = elapsedTime
+            splitStartAltitude = location.altitude
             currentSplitKm = reachedKm
             FeedbackEngine.success()
-        }
-
-        if selectedMode == .distanceGoal, distance >= distanceGoalKm * 1000 {
-            stopRun()
-        } else if selectedMode == .timeGoal, elapsedTime >= timeGoalMinutes * 60 {
-            stopRun()
         }
     }
 
@@ -229,7 +307,7 @@ final class RunViewModel: ObservableObject {
             calories: calories,
             elevationGain: elevationGain,
             splits: splits,
-            route: []
+            route: routePoints
         )
     }
 
@@ -244,7 +322,7 @@ final class RunViewModel: ObservableObject {
                 kilometer: km,
                 duration: perKm,
                 pace: perKm,
-                elevationChange: Double.random(in: -4...10)
+                elevationChange: 0
             )
         }
     }

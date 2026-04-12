@@ -60,3 +60,9 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Local project notes and helpers
+IMPROVEMENTS.md
+Speech_Script.md
+GymFlow_Usability_Test.pptx
+run.sh
