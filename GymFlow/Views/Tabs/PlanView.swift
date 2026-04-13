@@ -103,7 +103,7 @@ struct PlanView: View {
                         .font(.subheadline)
                         .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.86) : .secondary)
                 }
-                Text(day.workoutDay.exercises.isEmpty ? "Open day" : "\(day.workoutDay.exercises.count) exercises")
+                Text(day.workoutDay.kind == .run ? "Run session" : (day.workoutDay.exercises.isEmpty ? "Open day" : "\(day.workoutDay.exercises.count) exercises"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(viewModel.isToday(day) ? .white.opacity(0.9) : .secondary)
             }

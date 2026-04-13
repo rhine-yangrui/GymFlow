@@ -10,6 +10,7 @@ enum WorkoutDayKind: String, CaseIterable, Codable, Identifiable {
     case lower = "Lower"
     case chestFocus = "Chest Focus"
     case conditioning = "Conditioning"
+    case run = "Run"
     case recovery = "Recovery"
 
     var id: String { rawValue }
@@ -34,6 +35,8 @@ enum WorkoutDayKind: String, CaseIterable, Codable, Identifiable {
             return "bolt.heart.fill"
         case .conditioning:
             return "timer"
+        case .run:
+            return "figure.run.circle"
         case .recovery:
             return "figure.cooldown"
         }

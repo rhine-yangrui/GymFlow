@@ -35,7 +35,13 @@ struct WorkoutCustomizationSheet: View {
                     headerCard
 
                     if let workoutDay {
-                        if workoutDay.exercises.isEmpty {
+                        if workoutDay.kind == .run {
+                            EmptyStateView(
+                                title: "Run day",
+                                message: "Start your run from Today or the Run tab. Change the topic above if you want to add exercises instead.",
+                                icon: "figure.run.circle"
+                            )
+                        } else if workoutDay.exercises.isEmpty {
                             EmptyStateView(
                                 title: "No exercises added yet",
                                 message: "Set the day topic however you want, then add exercises and tune the sets, reps, and weight targets before you start.",
@@ -55,24 +61,26 @@ struct WorkoutCustomizationSheet: View {
                     }
 
                     VStack(spacing: 12) {
-                        if let workoutDay, workoutDay.title != "Open Session", workoutDay.exercises.isEmpty == false {
-                            SecondaryButton(title: "Save Topic Default", systemImage: "square.and.arrow.down") {
-                                FeedbackEngine.success()
-                                store.saveWorkoutDayAsDefaultTemplate(on: date)
-                            }
-                        }
-
-                        if let workoutDay, store.hasDefaultWorkoutTemplate(for: workoutDay.title) {
-                            SecondaryButton(title: "Apply Saved Default", systemImage: "arrow.down.doc") {
-                                FeedbackEngine.impact()
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    store.applyDefaultWorkoutTemplate(for: workoutDay.title, on: date)
+                        if let workoutDay, workoutDay.kind != .run {
+                            if workoutDay.title != "Open Session", workoutDay.exercises.isEmpty == false {
+                                SecondaryButton(title: "Save Topic Default", systemImage: "square.and.arrow.down") {
+                                    FeedbackEngine.success()
+                                    store.saveWorkoutDayAsDefaultTemplate(on: date)
                                 }
                             }
-                        }
 
-                        SecondaryButton(title: "Add Exercise", systemImage: "plus") {
-                            isAddingExercise = true
+                            if store.hasDefaultWorkoutTemplate(for: workoutDay.title) {
+                                SecondaryButton(title: "Apply Saved Default", systemImage: "arrow.down.doc") {
+                                    FeedbackEngine.impact()
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        store.applyDefaultWorkoutTemplate(for: workoutDay.title, on: date)
+                                    }
+                                }
+                            }
+
+                            SecondaryButton(title: "Add Exercise", systemImage: "plus") {
+                                isAddingExercise = true
+                            }
                         }
 
                         if isCustomized {
@@ -158,9 +166,15 @@ struct WorkoutCustomizationSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(workoutDay.exercises.count) exercises")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.accent)
+                if workoutDay.kind == .run {
+                    Text("Run session")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.accent)
+                } else {
+                    Text("\(workoutDay.exercises.count) exercises")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.accent)
+                }
             }
 
             Button {
@@ -305,6 +319,7 @@ struct SessionDetailsSheet: View {
     private var canSaveAsDefault: Bool {
         resolvedTopic.isEmpty == false &&
         resolvedTopic != "Open Session" &&
+        resolvedTopic != "Run" &&
         (workoutDay?.exercises.isEmpty == false) &&
         shouldResetPlan == false
     }
@@ -321,7 +336,7 @@ struct SessionDetailsSheet: View {
 
     private var shouldResetPlan: Bool {
         resolvedTopic != existingTopic &&
-        (resolvedTopic == "Open Session" || selectedTopic == Self.customTopicLabel)
+        (resolvedTopic == "Open Session" || resolvedTopic == "Run" || selectedTopic == Self.customTopicLabel)
     }
 
     var body: some View {
@@ -347,7 +362,11 @@ struct SessionDetailsSheet: View {
                 }
 
                 Section("Topic guide") {
-                    if resolvedTopic == "Open Session" {
+                    if resolvedTopic == "Run" {
+                        Text("Run day has no exercises. Start a run from Today or the Run tab to track pace, distance, and splits.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else if resolvedTopic == "Open Session" {
                         Text("Open Session clears the current exercise list so you can build a blank session from scratch.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -475,6 +494,7 @@ struct SessionDetailsSheet: View {
         "Lower",
         "Full Body",
         "Conditioning",
+        "Run",
         "Recovery",
         "Open Session"
     ]

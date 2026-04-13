@@ -27,6 +27,9 @@ final class AppStore: ObservableObject {
     @Published private(set) var recoveryHistory: [RecoveryCheckIn] = [] {
         didSet { save(recoveryHistory, for: .recoveryHistory) }
     }
+    @Published private(set) var runHistory: [RunRecord] = [] {
+        didSet { save(runHistory, for: .runHistory) }
+    }
     @Published var currentStreak: Int = 3
     @Published var bestStreak: Int = 7
 
@@ -52,6 +55,7 @@ final class AppStore: ObservableObject {
         case defaultWorkoutTemplates = "gymflow.defaultWorkoutTemplates"
         case savedTopicOptions = "gymflow.savedTopicOptions"
         case recoveryHistory = "gymflow.recoveryHistory"
+        case runHistory = "gymflow.runHistory"
     }
 
     private static let builtInTopics = [
@@ -62,6 +66,7 @@ final class AppStore: ObservableObject {
         "Lower",
         "Full Body",
         "Conditioning",
+        "Run",
         "Recovery",
         "Open Session"
     ]
@@ -88,6 +93,7 @@ final class AppStore: ObservableObject {
             defaultWorkoutTemplates = load([DefaultWorkoutTemplate].self, for: .defaultWorkoutTemplates) ?? []
             savedTopicOptions = load([String].self, for: .savedTopicOptions) ?? []
             recoveryHistory = load([RecoveryCheckIn].self, for: .recoveryHistory) ?? []
+            runHistory = load([RunRecord].self, for: .runHistory) ?? []
             clearStaleActiveWorkoutIfNeeded()
         }
     }
@@ -203,6 +209,8 @@ final class AppStore: ObservableObject {
             return "Fast full-body work with low decision fatigue"
         case "conditioning":
             return "Short conditioning and core support"
+        case "run":
+            return "Outdoor or treadmill run with pace tracking"
         case "recovery":
             return "Recovery and light movement"
         case "open session":
@@ -572,6 +580,23 @@ final class AppStore: ObservableObject {
 
     func latestRecoveryCheckIn(on date: Date = .now) -> RecoveryCheckIn? {
         recoveryHistory.first(where: { calendar.isDate($0.date, inSameDayAs: date) })
+    }
+
+    // MARK: - Run records
+
+    func saveRunRecord(_ record: RunRecord) {
+        runHistory.insert(record, at: 0)
+        runHistory.sort { $0.date > $1.date }
+    }
+
+    func deleteRunRecord(_ id: UUID) {
+        runHistory.removeAll { $0.id == id }
+    }
+
+    func runsToday(on date: Date = .now) -> [RunRecord] {
+        runHistory
+            .filter { calendar.isDate($0.date, inSameDayAs: date) }
+            .sorted { $0.date > $1.date }
     }
 
     private func adjustedWeight(from current: String, feedback: EffortFeedback) -> String {

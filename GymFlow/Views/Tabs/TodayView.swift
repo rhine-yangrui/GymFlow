@@ -8,6 +8,8 @@ struct TodayView: View {
     @State private var sessionPendingDeletion: WorkoutSession?
     @State private var restTimerSeconds: Int?
     @State private var showCelebration = false
+    @StateObject private var runViewModel = RunViewModel()
+    @State private var showRunSession = false
 
     private var viewModel: TodayViewModel {
         TodayViewModel(store: store)
@@ -19,7 +21,7 @@ struct TodayView: View {
                 streakBanner
                 headerCard
                 bodyContent
-                if viewModel.completedSessionsToday.isEmpty == false {
+                if viewModel.completedSessionsToday.isEmpty == false || viewModel.runsToday.isEmpty == false {
                     completedSessionsSection
                 }
             }
@@ -79,6 +81,15 @@ struct TodayView: View {
         .onChange(of: store.activeWorkout?.completedSetCount ?? 0) { _, _ in
             triggerCelebrationIfComplete()
         }
+        .fullScreenCover(isPresented: $showRunSession) {
+            RunSessionCover(viewModel: runViewModel)
+        }
+        .onChange(of: runViewModel.runState) { _, newState in
+            if newState == .idle && showRunSession {
+                showRunSession = false
+            }
+        }
+        .onAppear { runViewModel.store = store }
     }
 
     private func triggerCelebrationIfComplete() {
@@ -202,6 +213,8 @@ struct TodayView: View {
     private var bodyContent: some View {
         if let activeWorkout = viewModel.activeWorkout {
             activeWorkoutContent(activeWorkout)
+        } else if viewModel.isRunDay {
+            startRunContent
         } else if let todayPlan = viewModel.todayPlan, todayPlan.isRecovery == false || todayPlan.exercises.isEmpty == false {
             startWorkoutContent(todayPlan)
         } else {
@@ -381,7 +394,152 @@ struct TodayView: View {
                     }
                 }
             }
+
+            ForEach(viewModel.runsToday) { run in
+                todayRunCard(run)
+            }
         }
+    }
+
+    // MARK: - Run day content
+
+    private var startRunContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            EmptyStateView(
+                title: "Run day",
+                message: "Pick a mode and tap Start. Pace, distance, and splits are tracked in real time.",
+                icon: "figure.run"
+            )
+
+            runModeSelector
+
+            runGoalControls
+
+            PrimaryButton(title: "Start Run", systemImage: "play.fill") {
+                FeedbackEngine.impact()
+                runViewModel.store = store
+                runViewModel.startRun()
+                showRunSession = true
+            }
+
+            SecondaryButton(title: "Edit Session Details", systemImage: "square.and.pencil") {
+                isEditingSessionDetails = true
+            }
+        }
+    }
+
+    private var runModeSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(RunMode.allCases) { mode in
+                    let isSelected = runViewModel.selectedMode == mode
+                    Button {
+                        FeedbackEngine.impact()
+                        runViewModel.selectedMode = mode
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: mode.icon)
+                                .font(.caption.weight(.semibold))
+                            Text(mode.rawValue)
+                                .font(.caption.weight(.semibold))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(isSelected ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(AppTheme.card))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(isSelected ? Color.clear : Color.primary.opacity(0.08))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+
+    @ViewBuilder
+    private var runGoalControls: some View {
+        switch runViewModel.selectedMode {
+        case .distanceGoal:
+            runGoalCard(
+                title: "Distance goal",
+                value: String(format: "%.1f km", runViewModel.distanceGoalKm),
+                range: 1...20,
+                step: 0.5,
+                binding: $runViewModel.distanceGoalKm
+            )
+        case .timeGoal:
+            runGoalCard(
+                title: "Time goal",
+                value: "\(Int(runViewModel.timeGoalMinutes)) min",
+                range: 5...120,
+                step: 5,
+                binding: $runViewModel.timeGoalMinutes
+            )
+        case .freeRun, .intervals:
+            EmptyView()
+        }
+    }
+
+    private func runGoalCard(title: String, value: String, range: ClosedRange<Double>, step: Double, binding: Binding<Double>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                Text(value)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(AppTheme.accent)
+                    .monospacedDigit()
+            }
+            Slider(value: binding, in: range, step: step)
+                .tint(AppTheme.accent)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(AppTheme.card)
+        )
+    }
+
+    private func todayRunCard(_ run: RunRecord) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: "figure.run.circle")
+                .font(.title2)
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.accent)
+                )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Run")
+                    .font(.title3.bold())
+                HStack(spacing: 12) {
+                    Label("\(run.formattedDistanceKm) km", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                    Label(run.formattedDuration, systemImage: "clock")
+                    Label("\(run.formattedPace)/km", systemImage: "speedometer")
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(AppTheme.success)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(AppTheme.card)
+        )
     }
 
     private var recoveryDayContent: some View {
@@ -484,6 +642,26 @@ struct TodayView: View {
                 alternatives: []
             )
         }
+    }
+}
+
+struct RunSessionCover: View {
+    @ObservedObject var viewModel: RunViewModel
+
+    var body: some View {
+        ZStack {
+            switch viewModel.runState {
+            case .idle:
+                EmptyView()
+            case .countdown, .active, .paused:
+                ActiveRunView(viewModel: viewModel)
+                    .transition(.opacity)
+            case .completed:
+                RunSummaryView(viewModel: viewModel)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: viewModel.runState)
     }
 }
 

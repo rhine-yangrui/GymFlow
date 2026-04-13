@@ -80,9 +80,9 @@ enum WorkoutPlanGenerator {
             return [.upper, .lower, .push, .fullBody]
         case .fivePlusDays:
             if profile.goal == .chestFocus {
-                return [.chestFocus, .pull, .legs, .push, .conditioning]
+                return [.chestFocus, .pull, .legs, .push, .run]
             }
-            return [.push, .pull, .legs, .upper, .conditioning]
+            return [.push, .pull, .legs, .upper, .run]
         }
     }
 
@@ -125,6 +125,8 @@ enum WorkoutPlanGenerator {
             return "Chest bias with supporting push volume"
         case .conditioning:
             return "Short conditioning and core support"
+        case .run:
+            return "Outdoor or treadmill run with pace tracking"
         case .recovery:
             return "Recovery and light movement"
         }
@@ -136,6 +138,8 @@ enum WorkoutPlanGenerator {
         switch kind {
         case .conditioning:
             base = 30
+        case .run:
+            base = 35
         case .recovery:
             base = 20
         case .fullBody:
@@ -231,6 +235,8 @@ enum WorkoutPlanGenerator {
                 exercise("Dead Bug", sets: 2, reps: "10-12", weight: "Bodyweight", hint: "Keep the low back gently anchored."),
                 exercise("Mobility Flow", sets: 1, reps: "8", weight: "Easy", hint: "Move slowly through each position.")
             ]
+        case .run:
+            return []
         case .recovery:
             return []
         }
@@ -278,6 +284,8 @@ enum WorkoutPlanGenerator {
                 exercise("Bodyweight Squat", sets: 2, reps: "15", weight: "Bodyweight", hint: "Move with a full range."),
                 exercise("Mobility Flow", sets: 1, reps: "8", weight: "Easy", hint: "Finish with slow breathing.")
             ]
+        case .run:
+            return []
         case .recovery:
             return []
         }

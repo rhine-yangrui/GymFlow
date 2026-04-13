@@ -25,13 +25,13 @@ final class RunViewModel: ObservableObject {
     @Published var distanceGoalKm: Double = 5.0
     @Published var timeGoalMinutes: Double = 30.0
 
-    @Published var runHistory: [RunRecord] = []
-
     @Published var completedRun: RunRecord? = nil
 
     @Published var locationErrorMessage: String? = nil
     @Published var isLocationAuthorized: Bool = false
     @Published var hasGPSFix: Bool = false
+
+    weak var store: AppStore?
 
     private let locationTracker = LocationTracker()
     private var locationCancellable: AnyCancellable?
@@ -49,7 +49,6 @@ final class RunViewModel: ObservableObject {
     private var routePoints: [RoutePoint] = []
 
     init() {
-        loadSampleHistory()
         isLocationAuthorized = locationTracker.isAuthorized
 
         authCancellable = locationTracker.$authorizationStatus
@@ -201,17 +200,13 @@ final class RunViewModel: ObservableObject {
 
     func saveCompletedRun() {
         if let completedRun {
-            runHistory.insert(completedRun, at: 0)
+            store?.saveRunRecord(completedRun)
         }
         resetRun()
     }
 
     func discardCompletedRun() {
         resetRun()
-    }
-
-    func deleteRun(_ run: RunRecord) {
-        runHistory.removeAll { $0.id == run.id }
     }
 
     // MARK: - Sensor ingestion
@@ -363,61 +358,4 @@ final class RunViewModel: ObservableObject {
         "\(calories)"
     }
 
-    // MARK: - Sample data
-
-    private func loadSampleHistory() {
-        runHistory = [
-            RunRecord(
-                id: UUID(),
-                date: Date().addingTimeInterval(-86400),
-                totalDistance: 5230,
-                totalDuration: 1720,
-                averagePace: 329,
-                calories: 412,
-                elevationGain: 35,
-                splits: [
-                    RunSplit(id: UUID(), kilometer: 1, duration: 335, pace: 335, elevationChange: 8),
-                    RunSplit(id: UUID(), kilometer: 2, duration: 328, pace: 328, elevationChange: 12),
-                    RunSplit(id: UUID(), kilometer: 3, duration: 340, pace: 340, elevationChange: -3),
-                    RunSplit(id: UUID(), kilometer: 4, duration: 322, pace: 322, elevationChange: 10),
-                    RunSplit(id: UUID(), kilometer: 5, duration: 318, pace: 318, elevationChange: 8),
-                ],
-                route: []
-            ),
-            RunRecord(
-                id: UUID(),
-                date: Date().addingTimeInterval(-259200),
-                totalDistance: 3120,
-                totalDuration: 1080,
-                averagePace: 346,
-                calories: 248,
-                elevationGain: 18,
-                splits: [
-                    RunSplit(id: UUID(), kilometer: 1, duration: 352, pace: 352, elevationChange: 5),
-                    RunSplit(id: UUID(), kilometer: 2, duration: 348, pace: 348, elevationChange: 8),
-                    RunSplit(id: UUID(), kilometer: 3, duration: 338, pace: 338, elevationChange: 5),
-                ],
-                route: []
-            ),
-            RunRecord(
-                id: UUID(),
-                date: Date().addingTimeInterval(-604800),
-                totalDistance: 10050,
-                totalDuration: 3240,
-                averagePace: 322,
-                calories: 780,
-                elevationGain: 85,
-                splits: (1...10).map { km in
-                    RunSplit(
-                        id: UUID(),
-                        kilometer: km,
-                        duration: Double.random(in: 310...340),
-                        pace: Double.random(in: 310...340),
-                        elevationChange: Double.random(in: -5...12)
-                    )
-                },
-                route: []
-            )
-        ]
-    }
 }

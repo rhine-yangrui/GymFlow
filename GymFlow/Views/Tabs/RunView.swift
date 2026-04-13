@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RunView: View {
+    @EnvironmentObject private var store: AppStore
     @StateObject private var viewModel = RunViewModel()
     @State private var expandedRunID: UUID? = nil
     @State private var pendingDeletion: RunRecord? = nil
@@ -19,6 +20,7 @@ struct RunView: View {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: viewModel.runState)
+        .onAppear { viewModel.store = store }
     }
 
     // MARK: - Idle screen
@@ -48,7 +50,7 @@ struct RunView: View {
                 if let pendingDeletion {
                     FeedbackEngine.impact()
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.deleteRun(pendingDeletion)
+                        store.deleteRunRecord(pendingDeletion.id)
                     }
                 }
                 pendingDeletion = nil
@@ -191,14 +193,14 @@ struct RunView: View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(title: "Recent runs", subtitle: "Tap a run to see its splits.")
 
-            if viewModel.runHistory.isEmpty {
+            if store.runHistory.isEmpty {
                 EmptyStateView(
                     title: "No runs yet",
                     message: "Tap Start Run to log your first session.",
                     icon: "figure.run"
                 )
             } else {
-                ForEach(viewModel.runHistory) { run in
+                ForEach(store.runHistory) { run in
                     runHistoryCard(run)
                 }
             }
@@ -333,4 +335,5 @@ struct RunView: View {
 
 #Preview {
     RunView()
+        .environmentObject(AppStore.preview)
 }

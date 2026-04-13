@@ -34,6 +34,14 @@ struct TodayViewModel {
         store.workoutDay(for: .now)
     }
 
+    var isRunDay: Bool {
+        todayPlan?.kind == .run
+    }
+
+    var runsToday: [RunRecord] {
+        store.runsToday()
+    }
+
     var progress: Double {
         guard let activeWorkout, activeWorkout.totalSetCount > 0 else { return 0 }
         return Double(activeWorkout.completedSetCount) / Double(activeWorkout.totalSetCount)
@@ -64,9 +72,18 @@ struct TodayViewModel {
             return "Build your plan once and keep the next step obvious."
         }
 
-        let sessionSummary = completedSessionsToday.isEmpty
+        let workoutCount = completedSessionsToday.count
+        let runCount = runsToday.count
+        var sessionParts: [String] = []
+        if workoutCount > 0 {
+            sessionParts.append("\(workoutCount) workout\(workoutCount == 1 ? "" : "s")")
+        }
+        if runCount > 0 {
+            sessionParts.append("\(runCount) run\(runCount == 1 ? "" : "s")")
+        }
+        let sessionSummary = sessionParts.isEmpty
             ? ""
-            : " \(completedSessionsToday.count) session\(completedSessionsToday.count == 1 ? "" : "s") logged today."
+            : " \(sessionParts.joined(separator: ", ")) logged today."
 
         if todayPlan.isRecovery && todayPlan.exercises.isEmpty {
             return "The day is open. Recover, or build a session when you want.\(sessionSummary)"
